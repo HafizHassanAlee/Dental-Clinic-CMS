@@ -1,0 +1,153 @@
+{% extends "layouts/public_base.html" %}
+{% block content %}
+<section class="bg-[#01578c] text-white py-12">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <span class="text-xs font-bold uppercase tracking-widest text-[#29d8db]">{{ clinic.clinic_name }}</span>
+    <h1 class="text-3xl sm:text-4xl font-extrabold mt-2">{{ page_title }}</h1>
+  </div>
+</section>
+
+<section class="py-14 max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+  {% if page_key == 'contact' %}
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-8">
+    <div class="lg:col-span-6 bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-5">
+      <h2 class="text-2xl font-extrabold text-slate-900">Get in Touch with Rumi Dental Care</h2>
+      <p class="text-sm text-slate-600">
+        Visit our clinic in Johar Town, Lahore, call our reception desk, or sign in to your patient portal to schedule an appointment with {{ clinic.lead_dentist_name }}.
+      </p>
+      <div class="space-y-3 text-sm">
+        <div class="p-4 rounded-xl bg-[#f6f9f9]">
+          <span class="font-bold text-[#01578c] block">Clinic Address</span>
+          <span>{{ clinic.address_line }}</span>
+        </div>
+        <div class="p-4 rounded-xl bg-[#f6f9f9]">
+          <span class="font-bold text-[#01578c] block">Phone &amp; WhatsApp</span>
+          <a href="tel:+923102468080" class="font-semibold underline">{{ clinic.phone_primary }}</a>
+        </div>
+        <div class="p-4 rounded-xl bg-[#f6f9f9]">
+          <span class="font-bold text-[#01578c] block">Verified Clinic Hours</span>
+          <span>{{ clinic.opening_hours_days }}: {{ clinic.opening_hours_time }} (Sunday Closed)</span>
+        </div>
+      </div>
+      <div class="flex flex-wrap gap-3 pt-2">
+        <a href="{{ clinic.google_maps_url }}" target="_blank" rel="noopener noreferrer" class="px-5 py-2.5 rounded-xl bg-[#01578c] text-white text-sm font-bold hover:bg-[#013f66]">
+          View on Google Maps
+        </a>
+        <a href="{{ clinic.facebook_url }}" target="_blank" rel="noopener noreferrer" class="px-5 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-bold hover:bg-slate-50">
+          Facebook Page
+        </a>
+      </div>
+    </div>
+
+    <div class="lg:col-span-6 bg-[#f6f9f9] rounded-2xl p-6 sm:p-8 border border-slate-200 space-y-4">
+      <h3 class="text-xl font-bold text-slate-900">Book Online in Minutes</h3>
+      <p class="text-sm text-slate-600">
+        To protect your medical privacy and provide real-time slot confirmation with {{ clinic.lead_dentist_name }}, appointments are managed through our secure Patient Portal.
+      </p>
+      <div class="flex flex-col sm:flex-row gap-3 pt-2">
+        <a href="/register" class="px-5 py-3 rounded-xl bg-[#01578c] text-white text-sm font-bold text-center">Create Patient Account</a>
+        <a href="/login" class="px-5 py-3 rounded-xl border border-[#01578c] text-[#01578c] bg-white text-sm font-bold text-center">Existing Patient Login</a>
+      </div>
+    </div>
+  </div>
+
+  {% elif page_key == 'appointment-info' %}
+  <div class="bg-white rounded-2xl p-8 border border-slate-200 shadow-sm space-y-6">
+    <h2 class="text-2xl font-extrabold text-slate-900">How Appointments Work at Rumi Dental Care</h2>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
+      <div class="p-5 rounded-xl bg-[#f6f9f9] border border-slate-200">
+        <span class="text-xs font-bold uppercase text-[#01578c]">Step 1</span>
+        <h3 class="font-bold text-slate-900 mt-1">Register or Log In</h3>
+        <p class="text-xs text-slate-600 mt-1">Create your confidential patient profile so your medical history and X-rays remain securely linked to you.</p>
+      </div>
+      <div class="p-5 rounded-xl bg-[#f6f9f9] border border-slate-200">
+        <span class="text-xs font-bold uppercase text-[#01578c]">Step 2</span>
+        <h3 class="font-bold text-slate-900 mt-1">Choose Service &amp; Slot</h3>
+        <p class="text-xs text-slate-600 mt-1">Select a dental service, choose an available time between 04:00 PM – 10:00 PM (Mon–Sat), and describe your symptoms.</p>
+      </div>
+      <div class="p-5 rounded-xl bg-[#f6f9f9] border border-slate-200">
+        <span class="text-xs font-bold uppercase text-[#01578c]">Step 3</span>
+        <h3 class="font-bold text-slate-900 mt-1">Visit &amp; Access Records</h3>
+        <p class="text-xs text-slate-600 mt-1">After your consultation, view your FDI dental chart, prescriptions, X-rays, and PKR receipts in your portal.</p>
+      </div>
+    </div>
+    <p class="text-sm text-slate-600">
+      <strong>Rescheduling &amp; Cancellation Policy:</strong> Please request rescheduling or cancellation at least {{ clinic.cancellation_notice_hours }} hours before your scheduled slot through your Patient Portal or by calling {{ clinic.phone_primary }}.
+    </p>
+  </div>
+
+  {% elif page_key == 'faq' %}
+  <div class="space-y-4">
+    <div class="bg-white rounded-2xl p-6 border border-slate-200">
+      <h3 class="font-bold text-slate-900">What are Rumi Dental Care's opening hours?</h3>
+      <p class="text-sm text-slate-600 mt-2">We are open Monday through Saturday from 04:00 PM to 10:00 PM. The clinic is closed on Sundays.</p>
+    </div>
+    <div class="bg-white rounded-2xl p-6 border border-slate-200">
+      <h3 class="font-bold text-slate-900">Where is the clinic located?</h3>
+      <p class="text-sm text-slate-600 mt-2">We are located at {{ clinic.address_line }}.</p>
+    </div>
+    <div class="bg-white rounded-2xl p-6 border border-slate-200">
+      <h3 class="font-bold text-slate-900">Are my dental X-rays and clinical records kept confidential?</h3>
+      <p class="text-sm text-slate-600 mt-2">Yes. All dental charts, clinical notes, X-rays, prescriptions, and invoices are stored privately and strictly isolated to your authenticated patient account.</p>
+    </div>
+    <div class="bg-white rounded-2xl p-6 border border-slate-200">
+      <h3 class="font-bold text-slate-900">How do invoices and receipts work?</h3>
+      <p class="text-sm text-slate-600 mt-2">All fees are denominated in PKR. An itemized invoice shows billed procedures and any remaining balance, while an official payment receipt is generated strictly when a payment is received and recorded.</p>
+    </div>
+  </div>
+
+  {% elif page_key == 'reviews' %}
+  <div class="space-y-8">
+    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-[#f6f9f9] p-6 rounded-2xl border border-slate-200">
+      <div>
+        <h2 class="text-xl font-bold text-slate-900">Verified Patient Testimonials</h2>
+        <p class="text-sm text-slate-600 mt-1">Only moderated, approved testimonials with explicit patient publication consent are displayed publicly.</p>
+      </div>
+      <a href="{% if current_user %}/patient/reviews{% else %}/login{% endif %}" class="px-5 py-2.5 rounded-xl bg-[#01578c] text-white text-xs font-bold">
+        Submit a Review in Patient Portal
+      </a>
+    </div>
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {% for rev in reviews %}
+      <blockquote class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm flex flex-col justify-between">
+        <div>
+          <div class="text-amber-400 text-sm mb-2">{% for _ in range(rev.rating) %}★{% endfor %}</div>
+          {% if rev.title %}<h3 class="font-bold text-slate-900 text-sm mb-1.5">{{ rev.title }}</h3>{% endif %}
+          <p class="text-sm text-slate-600 italic">“{{ rev.comment }}”</p>
+        </div>
+        <footer class="mt-4 pt-3 border-t border-slate-100">
+          <span class="font-bold text-slate-900 text-sm block">{{ rev.reviewer_display_name }}</span>
+          <span class="text-xs text-slate-400">{{ rev.source_label }}</span>
+        </footer>
+      </blockquote>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% elif page_key == 'privacy-policy' %}
+  <div class="bg-white rounded-2xl p-8 border border-slate-200 space-y-4 text-sm text-slate-700 leading-relaxed">
+    <h2 class="text-2xl font-extrabold text-slate-900">Privacy Policy &amp; Patient Data Protection</h2>
+    <p>Rumi Dental Care treats all patient demographic details, medical histories, FDI dental charts, digital X-rays, prescriptions, and billing statements as strictly confidential medical records.</p>
+    <h3 class="font-bold text-slate-900 text-base pt-2">1. Patient-Level Data Isolation</h3>
+    <p>Every patient query is scoped on the server to the authenticated account. No patient can view or download another patient's appointments, X-rays, prescriptions, or invoices.</p>
+    <h3 class="font-bold text-slate-900 text-base pt-2">2. Private Clinical Document Storage</h3>
+    <p>Uploaded dental radiographs and clinical documents are stored outside public static directories and streamed only after server-side authorization and audit logging.</p>
+    <h3 class="font-bold text-slate-900 text-base pt-2">3. Public Testimonials &amp; Consent</h3>
+    <p>Patient reviews are moderated prior to publication and never disclose clinical diagnoses, treatment histories, phone numbers, or private identifiers.</p>
+  </div>
+
+  {% elif page_key == 'terms-of-service' %}
+  <div class="bg-white rounded-2xl p-8 border border-slate-200 space-y-4 text-sm text-slate-700 leading-relaxed">
+    <h2 class="text-2xl font-extrabold text-slate-900">Terms of Service</h2>
+    <p>By registering on the Rumi Dental Care Patient Portal, you agree to provide accurate contact and medical history information and to use the appointment booking system responsibly.</p>
+    <p>Visual dental charts and portal summaries are provided for patient information and clinical documentation; they do not replace an in-person clinical examination by a licensed dental surgeon.</p>
+  </div>
+
+  {% else %}
+  <div class="bg-white rounded-2xl p-8 border border-slate-200 space-y-4 text-sm text-slate-700 leading-relaxed">
+    <h2 class="text-2xl font-extrabold text-slate-900">Accessibility Information</h2>
+    <p>Rumi Dental Care is committed to making both our physical clinic in Johar Town, Lahore and our online patient portal accessible to all patients, including keyboard navigation, high-contrast typography, semantic HTML landmarks, and clear form labels.</p>
+  </div>
+  {% endif %}
+</section>
+{% endblock %}

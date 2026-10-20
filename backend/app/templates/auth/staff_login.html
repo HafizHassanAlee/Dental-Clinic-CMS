@@ -1,0 +1,96 @@
+{% extends "layouts/public_base.html" %}
+{% block content %}
+<section class="py-16 bg-slate-900 min-h-[78vh] flex items-center">
+  <div class="max-w-md w-full mx-auto px-4">
+    <div class="bg-white rounded-3xl shadow-2xl border border-slate-200 p-8">
+      <div class="text-center mb-6">
+        <img src="/static/images/rumi-logo.png" alt="Rumi Dental Care" class="h-10 mx-auto mb-3" />
+        <span class="px-3 py-1 rounded-full bg-slate-900 text-[#29d8db] text-xs font-bold uppercase tracking-wider">
+          Restricted Staff Portal
+        </span>
+        <h1 class="text-2xl font-extrabold text-slate-900 mt-2">Doctor &amp; Administrator Login</h1>
+        <p class="text-xs text-slate-500 mt-1">
+          Authorized authentication entry point for Rumi Dental Care clinicians and administrative staff only.
+        </p>
+      </div>
+
+      <div id="staff-login-error" class="hidden mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium" role="alert"></div>
+
+      <form id="staff-login-form" class="space-y-4" onsubmit="submitStaffLogin(event)">
+        <div>
+          <label for="staff-email" class="block text-xs font-bold text-slate-700 mb-1">Staff / Clinician Email</label>
+          <input id="staff-email" name="email" type="email" required autocomplete="username"
+            placeholder="dr.aisha@rumidentalcare.com"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:border-[#01578c]" />
+        </div>
+
+        <div>
+          <label for="staff-password" class="block text-xs font-bold text-slate-700 mb-1">Password</label>
+          <input id="staff-password" name="password" type="password" required autocomplete="current-password"
+            placeholder="••••••••"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm focus:border-[#01578c]" />
+        </div>
+
+        <button type="submit" id="staff-login-btn"
+          class="w-full py-3 rounded-xl bg-slate-900 text-white font-bold text-sm hover:bg-[#01578c] transition">
+          Authenticate Staff Session
+        </button>
+      </form>
+
+      <div class="mt-5 p-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-xs">
+        <div class="font-bold text-slate-800 mb-1.5">Demo Staff Quick-Fill (One-Click):</div>
+        <div class="flex flex-wrap gap-2">
+          <button type="button" onclick="quickFillStaff('dr.aisha@rumidentalcare.com', 'Doctor@Rumi2026!')"
+            class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-[#01578c] font-semibold hover:bg-sky-50 transition">
+            Dr. Aisha Salman (Doctor)
+          </button>
+          <button type="button" onclick="quickFillStaff('admin@rumidentalcare.com', 'Admin@Rumi2026!')"
+            class="px-2.5 py-1.5 rounded-lg bg-white border border-slate-300 text-slate-800 font-semibold hover:bg-slate-100 transition">
+            Clinic Administrator (Admin)
+          </button>
+        </div>
+      </div>
+
+      <div class="mt-6 pt-5 border-t border-slate-100 text-center space-y-2 text-xs">
+        <p class="text-slate-500">
+          Staff accounts are provisioned exclusively by clinic administration. Public registration is disabled for staff roles.
+        </p>
+        <p class="pt-1">
+          <a href="/login" class="font-bold text-[#01578c] hover:underline">← Looking for the Patient Portal Login?</a>
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+function quickFillStaff(email, password) {
+  document.getElementById('staff-email').value = email;
+  document.getElementById('staff-password').value = password;
+}
+
+async function submitStaffLogin(e) {
+  e.preventDefault();
+  const errBox = document.getElementById('staff-login-error');
+  const btn = document.getElementById('staff-login-btn');
+  errBox.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Verifying credentials...';
+
+  try {
+    const email = document.getElementById('staff-email').value.trim();
+    const password = document.getElementById('staff-password').value;
+    const res = await rumiApi('/api/v1/auth/staff/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password })
+    });
+    window.location.href = res.redirect_url || (res.role === 'admin' ? '/admin/dashboard' : '/doctor/dashboard');
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Authenticate Staff Session';
+  }
+}
+</script>
+{% endblock %}

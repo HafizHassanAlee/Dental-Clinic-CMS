@@ -1,0 +1,69 @@
+{% extends "layouts/public_base.html" %}
+{% block content %}
+<section class="bg-[#01578c] text-white py-14">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <span class="text-xs font-bold uppercase tracking-widest text-[#29d8db]">About Rumi Dental Care</span>
+    <h1 class="text-3xl sm:text-4xl font-extrabold mt-2">Dedicated to Optimal Oral Health &amp; Patient Comfort</h1>
+    <p class="text-sky-100 mt-3 max-w-3xl text-sm sm:text-base">{{ clinic.tagline }}</p>
+  </div>
+</section>
+
+<section class="py-16 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-start">
+  <div class="lg:col-span-7 space-y-6">
+    <h2 class="text-2xl font-extrabold text-slate-900">Our Mission &amp; Clinical Philosophy</h2>
+    <p class="text-slate-600 leading-relaxed">{{ clinic.about_summary }}</p>
+    <p class="text-slate-600 leading-relaxed">
+      Whether you need routine dental check-ups, preventive care, cosmetic dentistry, orthodontic treatments, or restorative procedures, we have the expertise and resources to meet your dental needs. We look forward to helping you achieve a healthy and beautiful smile.
+    </p>
+
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5 pt-4">
+      <div class="p-5 rounded-2xl bg-[#f6f9f9] border border-slate-200">
+        <h3 class="font-bold text-[#01578c]">Top-Notch Sterilization Protocols</h3>
+        <p class="text-sm text-slate-600 mt-2">
+          Every dental handpiece and surgical instrument undergoes rigorous ultrasonic cleaning, pouching, and medical-grade autoclave sterilization before patient contact.
+        </p>
+      </div>
+      <div class="p-5 rounded-2xl bg-[#f6f9f9] border border-slate-200">
+        <h3 class="font-bold text-[#01578c]">Confidential Digital Records</h3>
+        <p class="text-sm text-slate-600 mt-2">
+          Our platform maintains strict patient-level record isolation—allowing you to view your FDI tooth chart, X-rays, prescriptions, and receipts with complete peace of mind.
+        </p>
+      </div>
+    </div>
+
+    <div class="pt-4">
+      <h2 class="text-2xl font-extrabold text-slate-900 mb-4">Our Clinical Team</h2>
+      <div class="space-y-4">
+        {% for doc in doctors %}
+        <div class="p-6 rounded-2xl bg-white border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <span class="px-2.5 py-1 rounded-full bg-sky-50 text-[#01578c] text-xs font-bold">{{ doc.title }}</span>
+            <h3 class="text-xl font-bold text-slate-900 mt-2">{{ doc.full_name }}</h3>
+            <p class="text-xs font-semibold text-slate-500">{{ doc.specialization }}</p>
+            {% if doc.bio %}
+            <p class="text-sm text-slate-600 mt-2 leading-relaxed">{{ doc.bio }}</p>
+            {% endif %}
+          </div>
+          <div class="shrink-0">
+            <a href="{% if current_user %}/patient/appointments{% else %}/register{% endif %}" class="inline-block px-4 py-2.5 rounded-xl bg-[#01578c] text-white text-xs font-bold hover:bg-[#013f66]">
+              Book Consultation
+            </a>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="lg:col-span-5 space-y-6">
+    <img src="/static/images/clinic-interior.jpg" alt="Rumi Dental Care Clinic Interior" class="w-full rounded-2xl shadow-md border border-slate-200" />
+    <img src="/static/images/clinic-care.jpg" alt="Rumi Dental Care Patient Experience" class="w-full rounded-2xl shadow-md border border-slate-200" />
+    <div class="p-6 rounded-2xl bg-slate-900 text-white space-y-2">
+      <h3 class="font-bold text-lg text-[#29d8db]">Visit Us in Johar Town, Lahore</h3>
+      <p class="text-sm text-slate-300">{{ clinic.address_line }}</p>
+      <p class="text-sm text-slate-300">Open {{ clinic.opening_hours_days }}: {{ clinic.opening_hours_time }}</p>
+      <p class="text-sm font-bold text-white pt-1">Tel / WhatsApp: {{ clinic.phone_primary }}</p>
+    </div>
+  </div>
+</section>
+{% endblock %}

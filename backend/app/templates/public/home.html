@@ -1,0 +1,228 @@
+{% extends "layouts/public_base.html" %}
+{% block content %}
+<!-- Hero Section -->
+<section class="relative bg-gradient-to-br from-[#01578c] via-[#014670] to-slate-900 text-white overflow-hidden">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+    <div class="lg:col-span-7 space-y-6">
+      <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/10 border border-white/20 text-[#29d8db] text-xs font-bold uppercase tracking-wider">
+        <span>✨ {{ clinic.hero_subtitle }}</span>
+      </div>
+      <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight leading-tight">
+        Smile Bright, Live Brighter — <span class="text-[#29d8db]">Your Dental Care Destination</span>
+      </h1>
+      <p class="text-base sm:text-lg text-sky-100 leading-relaxed max-w-2xl">
+        Welcome to <strong>{{ clinic.clinic_name }}</strong> in Johar Town, Lahore, led by <strong>{{ clinic.lead_dentist_name }}</strong>.
+        {{ clinic.about_summary }}
+      </p>
+      <div class="flex flex-wrap items-center gap-4 pt-2">
+        <a href="{% if current_user %}/patient/appointments{% else %}/register{% endif %}" class="px-6 py-3.5 rounded-xl bg-[#29d8db] text-slate-950 font-bold text-sm sm:text-base shadow-lg hover:bg-cyan-300 transition">
+          Book Appointment with Dr. Aisha
+        </a>
+        <a href="tel:+923102468080" class="px-6 py-3.5 rounded-xl bg-white/10 border border-white/30 text-white font-semibold text-sm sm:text-base hover:bg-white/20 transition">
+          Call {{ clinic.phone_primary }}
+        </a>
+        <a href="/services" class="px-5 py-3.5 rounded-xl text-sky-200 hover:text-white font-semibold text-sm underline">
+          Explore 12 Dental Services →
+        </a>
+      </div>
+
+      <!-- Verified Clinic Highlights -->
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-6 border-t border-white/15 text-xs sm:text-sm">
+        <div class="bg-white/5 rounded-xl p-3.5 border border-white/10">
+          <span class="block font-bold text-[#29d8db]">Top Sterilization Protocols</span>
+          <span class="text-sky-100">Hygienic &amp; neat clinical environment</span>
+        </div>
+        <div class="bg-white/5 rounded-xl p-3.5 border border-white/10">
+          <span class="block font-bold text-[#29d8db]">{{ clinic.opening_hours_days }}: {{ clinic.opening_hours_time }}</span>
+          <span class="text-sky-100">Convenient evening hours in Johar Town</span>
+        </div>
+        <div class="bg-white/5 rounded-xl p-3.5 border border-white/10">
+          <span class="block font-bold text-[#29d8db]">Digital Patient Portal</span>
+          <span class="text-sky-100">Private access to X-rays, charts &amp; receipts</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-5">
+      <div class="bg-white rounded-3xl p-4 shadow-2xl text-slate-800 space-y-4">
+        <img src="/static/images/clinic-interior.jpg" alt="Rumi Dental Care Modern Dental Suite in Johar Town Lahore" class="w-full h-64 sm:h-72 object-cover rounded-2xl" />
+        <div class="grid grid-cols-2 gap-3">
+          <img src="/static/images/clinic-care.jpg" alt="Rumi Dental Care Clinical Care" class="w-full h-32 object-cover rounded-xl" />
+          <img src="/static/images/root-canal-banner.png" alt="Precision Endodontics at Rumi Dental Care" class="w-full h-32 object-cover rounded-xl" />
+        </div>
+        <div class="p-3 bg-[#f6f9f9] rounded-xl flex items-center justify-between">
+          <div>
+            <p class="text-xs font-bold uppercase text-[#01578c]">Lead Dental Surgeon</p>
+            <p class="text-sm font-bold text-slate-900">{{ clinic.lead_dentist_name }}</p>
+            <p class="text-xs text-slate-500">{{ clinic.address_line }}</p>
+          </div>
+          <a href="/login" class="px-3.5 py-2 rounded-lg bg-[#01578c] text-white text-xs font-bold hover:bg-[#013f66]">
+            Patient Portal
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Featured Dental Procedures & Services -->
+<section id="procedures" class="py-16 lg:py-20 bg-[#f6f9f9]">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="text-center max-w-3xl mx-auto mb-12">
+      <span class="text-xs font-bold uppercase tracking-widest text-[#01578c]">Comprehensive Dentistry</span>
+      <h2 class="text-2xl sm:text-4xl font-extrabold text-slate-900 mt-2">Our Dental Procedures &amp; Services</h2>
+      <p class="text-slate-600 mt-3 text-sm sm:text-base">
+        Equipped with state-of-the-art technology and modern dental instruments, Rumi Dental Care delivers preventive, cosmetic, restorative, orthodontic, and surgical dental treatments.
+      </p>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {% for srv in services %}
+      <article class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200/80 hover:shadow-md hover:border-[#01578c]/40 transition flex flex-col justify-between">
+        <div>
+          <div class="flex items-center justify-between gap-2 mb-3">
+            <span class="px-2.5 py-1 rounded-full bg-sky-50 text-[#01578c] text-xs font-bold">{{ srv.category }}</span>
+            <span class="text-xs font-semibold text-slate-500">~{{ srv.duration_minutes }} mins</span>
+          </div>
+          <h3 class="text-lg font-bold text-slate-900">
+            <a href="/services/{{ srv.slug }}" class="hover:text-[#01578c]">{{ srv.name }}</a>
+          </h3>
+          {% if srv.tagline %}
+          <p class="text-xs font-semibold text-[#01578c] mt-1">“{{ srv.tagline }}”</p>
+          {% endif %}
+          <p class="text-sm text-slate-600 mt-2.5 leading-relaxed">{{ srv.short_description }}</p>
+        </div>
+        <div class="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+          <div>
+            <span class="text-[11px] uppercase tracking-wider text-slate-400 block">Standard Fee</span>
+            <span class="text-sm font-extrabold text-slate-900">PKR {{ "{:,.0f}".format(srv.price) }}</span>
+          </div>
+          <div class="flex items-center gap-2">
+            <a href="/services/{{ srv.slug }}" class="text-xs font-bold text-[#01578c] hover:underline">Details</a>
+            <a href="{% if current_user %}/patient/appointments{% else %}/register{% endif %}" class="px-3 py-1.5 rounded-lg bg-[#01578c] text-white text-xs font-semibold hover:bg-[#013f66]">
+              Book
+            </a>
+          </div>
+        </div>
+      </article>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- Why Choose Rumi Dental Care & Dr. Aisha Salman -->
+<section class="py-16 lg:py-20 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+    <div class="lg:col-span-5 space-y-4">
+      <img src="/static/images/clinic-badge.jpg" alt="Rumi Dental Care Brand Identity" class="w-full max-h-80 object-cover rounded-2xl shadow-md border border-slate-200" />
+      <div class="bg-[#01578c] text-white p-6 rounded-2xl">
+        <h3 class="font-bold text-lg">Get a Dazzling Smile at an Affordable Price</h3>
+        <p class="text-sm text-sky-100 mt-2 leading-relaxed">
+          Affordable and hygienic dental clinic with top-notch sterilization protocols. Committed to quality care, ensuring budget-friendly options without compromising on cleanliness or patient well-being.
+        </p>
+      </div>
+    </div>
+
+    <div class="lg:col-span-7 space-y-6">
+      <span class="text-xs font-bold uppercase tracking-widest text-[#01578c]">Meet Your Dentist</span>
+      <h2 class="text-2xl sm:text-4xl font-extrabold text-slate-900">Dedicated Care by {{ clinic.lead_dentist_name }}</h2>
+      <p class="text-slate-600 leading-relaxed">
+        At Rumi Dental Care, every consultation begins with careful listening, transparent clinical examination, and digital diagnostic clarity. Whether you are visiting for routine ultrasonic scaling, painless root canal treatment, cosmetic teeth whitening, orthodontic braces, or dental implants, your comfort and safety come first.
+      </p>
+
+      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+        <div class="p-4 rounded-2xl bg-[#f6f9f9] border border-slate-200">
+          <h4 class="font-bold text-slate-900 text-sm">1. Strict Sterilization &amp; Hygiene</h4>
+          <p class="text-xs text-slate-600 mt-1">Autoclave sterilization and single-use disposables for every patient visit.</p>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#f6f9f9] border border-slate-200">
+          <h4 class="font-bold text-slate-900 text-sm">2. Interactive FDI Dental Charting</h4>
+          <p class="text-xs text-slate-600 mt-1">Tooth-specific clinical findings and treatment history accessible in your secure portal.</p>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#f6f9f9] border border-slate-200">
+          <h4 class="font-bold text-slate-900 text-sm">3. Private Digital X-Rays &amp; Records</h4>
+          <p class="text-xs text-slate-600 mt-1">View your authorized dental radiographs, prescriptions, and itemized PKR receipts online.</p>
+        </div>
+        <div class="p-4 rounded-2xl bg-[#f6f9f9] border border-slate-200">
+          <h4 class="font-bold text-slate-900 text-sm">4. Transparent PKR Billing</h4>
+          <p class="text-xs text-slate-600 mt-1">Clear distinction between cost estimates, itemized invoices, and verified payment receipts.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Genuine Approved Patient Testimonials ("Happy Stories") -->
+<section id="reviews" class="py-16 lg:py-20 bg-[#f6f9f9] border-t border-slate-200">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex flex-col sm:flex-row sm:items-end justify-between mb-10 gap-4">
+      <div>
+        <span class="text-xs font-bold uppercase tracking-widest text-[#01578c]">Happy Stories</span>
+        <h2 class="text-2xl sm:text-4xl font-extrabold text-slate-900 mt-1">What Our Patients Say</h2>
+        <p class="text-sm text-slate-600 mt-1">Genuine approved testimonials from patients treated at Rumi Dental Care.</p>
+      </div>
+      <a href="/reviews" class="text-sm font-bold text-[#01578c] hover:underline">View All Approved Reviews →</a>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {% for rev in reviews[:6] %}
+      <blockquote class="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 flex flex-col justify-between">
+        <div>
+          <div class="flex items-center gap-1 text-amber-400 text-sm mb-3" aria-label="{{ rev.rating }} out of 5 stars">
+            {% for _ in range(rev.rating) %}★{% endfor %}
+          </div>
+          {% if rev.title %}
+          <h3 class="font-bold text-slate-900 text-sm mb-2">{{ rev.title }}</h3>
+          {% endif %}
+          <p class="text-sm text-slate-600 italic leading-relaxed">“{{ rev.comment }}”</p>
+        </div>
+        <footer class="mt-5 pt-4 border-t border-slate-100 flex items-center justify-between">
+          <div>
+            <span class="block font-bold text-slate-900 text-sm">{{ rev.reviewer_display_name }}</span>
+            <span class="block text-xs text-slate-400">{{ rev.source_label }}</span>
+          </div>
+          <span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-bold">Verified</span>
+        </footer>
+      </blockquote>
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- Clinic Location, Hours & Call To Action -->
+<section id="contact" class="py-16 bg-white">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="bg-[#01578c] text-white rounded-3xl p-8 sm:p-12 shadow-xl grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+      <div class="lg:col-span-7 space-y-4">
+        <h2 class="text-2xl sm:text-3xl font-extrabold">Ready to Schedule Your Dental Visit?</h2>
+        <p class="text-sky-100 text-sm sm:text-base leading-relaxed">
+          Create your patient account to book an appointment online with {{ clinic.lead_dentist_name }}, or call our reception desk directly during clinic hours.
+        </p>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 text-sm">
+          <div class="bg-white/10 p-4 rounded-2xl">
+            <span class="block text-xs text-[#29d8db] font-bold uppercase">Location</span>
+            <span class="font-semibold mt-1 block">{{ clinic.address_line }}</span>
+          </div>
+          <div class="bg-white/10 p-4 rounded-2xl">
+            <span class="block text-xs text-[#29d8db] font-bold uppercase">Open Hours</span>
+            <span class="font-semibold mt-1 block">{{ clinic.opening_hours_days }}</span>
+            <span class="text-xs text-sky-200">{{ clinic.opening_hours_time }}</span>
+          </div>
+          <div class="bg-white/10 p-4 rounded-2xl">
+            <span class="block text-xs text-[#29d8db] font-bold uppercase">Direct Phone</span>
+            <a href="tel:+923102468080" class="font-bold mt-1 block hover:underline">{{ clinic.phone_primary }}</a>
+          </div>
+        </div>
+      </div>
+      <div class="lg:col-span-5 flex flex-col sm:flex-row lg:flex-col gap-3">
+        <a href="{% if current_user %}/patient/appointments{% else %}/register{% endif %}" class="w-full text-center py-4 px-6 rounded-xl bg-[#29d8db] text-slate-950 font-extrabold text-sm hover:bg-cyan-300 transition">
+          Book Online Appointment
+        </a>
+        <a href="{{ clinic.google_maps_url }}" target="_blank" rel="noopener noreferrer" class="w-full text-center py-3.5 px-6 rounded-xl bg-white/10 border border-white/25 text-white font-semibold text-sm hover:bg-white/20 transition">
+          Open Location on Google Maps
+        </a>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}

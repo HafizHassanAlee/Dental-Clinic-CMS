@@ -1,0 +1,55 @@
+{% extends "layouts/public_base.html" %}
+{% block content %}
+<section class="bg-[#01578c] text-white py-12">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <a href="/services" class="text-xs font-bold text-[#29d8db] hover:underline">← Back to All Dental Procedures</a>
+    <h1 class="text-3xl sm:text-4xl font-extrabold mt-2">{{ service.name }}</h1>
+    {% if service.tagline %}
+    <p class="text-sky-100 mt-1 text-base">“{{ service.tagline }}”</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="py-14 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 lg:grid-cols-12 gap-10">
+  <div class="lg:col-span-8 space-y-6">
+    <div class="bg-white rounded-2xl p-6 sm:p-8 border border-slate-200 shadow-sm space-y-4">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="px-3 py-1 rounded-full bg-sky-50 text-[#01578c] text-xs font-bold">{{ service.category }}</span>
+        <span class="text-xs text-slate-500">Procedure Code: <strong>{{ service.code }}</strong></span>
+        <span class="text-xs text-slate-500">Estimated Duration: <strong>{{ service.duration_minutes }} minutes</strong></span>
+      </div>
+      <h2 class="text-xl font-bold text-slate-900">Procedure Overview</h2>
+      <p class="text-slate-700 leading-relaxed">{{ service.short_description }}</p>
+      {% if service.detailed_description %}
+      <p class="text-slate-600 leading-relaxed">{{ service.detailed_description }}</p>
+      {% endif %}
+
+      <div class="p-5 rounded-xl bg-[#f6f9f9] border border-slate-200 mt-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <span class="text-xs uppercase font-bold text-slate-500 block">Standard Procedure Fee</span>
+          <span class="text-2xl font-extrabold text-[#01578c]">PKR {{ "{:,.2f}".format(service.price) }}</span>
+          <span class="block text-xs text-slate-500 mt-0.5">Final treatment plan is tailored after an in-clinic examination.</span>
+        </div>
+        <a href="{% if current_user %}/patient/appointments{% else %}/register{% endif %}" class="px-6 py-3 rounded-xl bg-[#01578c] text-white text-sm font-bold hover:bg-[#013f66] text-center">
+          Schedule {{ service.name }}
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <aside class="lg:col-span-4 space-y-4">
+    <div class="bg-[#f6f9f9] rounded-2xl p-6 border border-slate-200">
+      <h3 class="font-bold text-slate-900 text-sm uppercase tracking-wider mb-3">All Clinic Services</h3>
+      <ul class="space-y-2 text-sm">
+        {% for s in all_services %}
+        <li>
+          <a href="/services/{{ s.slug }}" class="block px-3 py-2 rounded-lg {% if s.id == service.id %}bg-[#01578c] text-white font-bold{% else %}text-slate-700 hover:bg-white{% endif %}">
+            {{ s.name }}
+          </a>
+        </li>
+        {% endfor %}
+      </ul>
+    </div>
+  </aside>
+</section>
+{% endblock %}

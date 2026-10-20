@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ page_title }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/rumi.css" />
+  <script>window.RUMI_CSRF_TOKEN = "{{ csrf_token or '' }}";</script>
+</head>
+<body class="min-h-screen bg-[#f6f9f9] text-slate-800 flex flex-col lg:flex-row">
+  <!-- Doctor Sidebar -->
+  <aside class="w-full lg:w-64 bg-slate-900 text-white shrink-0 flex flex-col justify-between">
+    <div>
+      <div class="p-5 border-b border-slate-800 flex items-center gap-2.5">
+        <div class="bg-white p-1.5 rounded-lg">
+          <img src="/static/images/rumi-logo.png" alt="Rumi Dental Care" class="h-7 w-auto" />
+        </div>
+        <div>
+          <span class="block font-extrabold text-sm leading-none">RUMI DENTAL</span>
+          <span class="block text-[11px] text-[#29d8db] font-semibold mt-0.5">Clinician Workspace</span>
+        </div>
+      </div>
+
+      <div class="px-5 py-3 bg-slate-950/60 border-b border-slate-800 text-xs">
+        <span class="text-slate-400 block">Attending Clinician:</span>
+        <strong class="text-white text-sm block truncate">{{ doctor.full_name }}</strong>
+        <span class="text-[11px] text-[#29d8db] font-mono">{{ doctor.doctor_code }} • {{ doctor.title }}</span>
+      </div>
+
+      <nav class="p-3 space-y-1 text-xs sm:text-sm font-medium flex lg:block overflow-x-auto" aria-label="Doctor Workspace Navigation">
+        {% set doc_nav = [
+          ('dashboard', 'Clinical Overview', '/doctor/dashboard'),
+          ('appointments', 'Appointment Workflow', '/doctor/appointments'),
+          ('patients', 'Patient Directory', '/doctor/patients'),
+          ('clinical-records', 'Consultations & Notes', '/doctor/clinical-records'),
+          ('dental-chart', 'Interactive FDI Chart', '/doctor/dental-chart'),
+          ('treatments', 'Treatment Plans & Logs', '/doctor/treatments'),
+          ('prescriptions', 'Prescriptions (Rx)', '/doctor/prescriptions'),
+          ('documents', 'X-Rays & Documents', '/doctor/documents'),
+          ('schedule', 'My Clinic Schedule', '/doctor/schedule'),
+          ('profile', 'Clinician Profile', '/doctor/profile')
+        ] %}
+        {% for key, label, href in doc_nav %}
+        <a href="{{ href }}{% if selected_patient %}?patient_id={{ selected_patient.id }}{% endif %}"
+          class="block whitespace-nowrap px-3.5 py-2.5 rounded-xl transition {% if section == key or (key == 'patients' and section == 'patient-detail') %}bg-[#01578c] text-white font-bold{% else %}text-slate-300 hover:bg-white/10{% endif %}">
+          {{ label }}
+        </a>
+        {% endfor %}
+      </nav>
+    </div>
+
+    <div class="hidden lg:block p-4 border-t border-slate-800 space-y-2 text-xs">
+      <a href="/" class="block text-center text-slate-400 hover:text-white py-1">← Public Website</a>
+      <button type="button" onclick="handleLogout()" class="w-full py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-200 font-semibold">
+        Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Doctor Workspace -->
+  <div class="flex-1 flex flex-col min-w-0">
+    <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h1 class="text-xl font-extrabold text-slate-900">
+          {{ doctor.full_name }} — Clinical Workspace
+        </h1>
+        <p class="text-xs text-slate-500">
+          Active Patient Context:
+          {% if selected_patient %}
+          <strong class="text-[#01578c]">{{ selected_patient.full_name }} ({{ selected_patient.patient_number }})</strong>
+          {% else %}
+          <span>None selected</span>
+          {% endif %}
+        </p>
+      </div>
+
+      <!-- Quick Patient Switcher -->
+      <div class="flex items-center gap-3">
+        <label for="doc-patient-switcher" class="text-xs font-bold text-slate-600">Active Patient:</label>
+        <select id="doc-patient-switcher" onchange="switchDoctorActivePatient(this.value)"
+          class="px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-800 bg-slate-50">
+          {% for p in patients %}
+          <option value="{{ p.id }}" {% if selected_patient and p.id == selected_patient.id %}selected{% endif %}>
+            {{ p.patient_number }} — {{ p.full_name }}
+          </option>
+          {% endfor %}
+        </select>
+        {% if selected_patient %}
+        <a href="/doctor/patients/{{ selected_patient.id }}"
+          class="px-3 py-2 rounded-xl border border-slate-300 text-slate-700 text-xs font-bold hover:bg-slate-100">
+          Patient File
+        </a>
+        <a href="/api/v1/patients/{{ selected_patient.id }}/treatment-summary.pdf" target="_blank"
+          class="px-3 py-2 rounded-xl bg-[#01578c] text-white text-xs font-bold hover:bg-[#013f66]">
+          Summary PDF
+        </a>
+        {% endif %}
+      </div>
+    </header>
+
+    <main class="p-6 space-y-8 max-w-7xl w-full mx-auto">
+      <!-- KPI Overview Row -->
+      {% if section in ['dashboard', 'patient-detail'] %}
+      <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-bold uppercase text-slate-400">Assigned Appointments</span>
+          <p class="text-2xl font-extrabold text-[#01578c] mt-1">{{ appointments|length }}</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-bold uppercase text-slate-400">Clinical Encounters</span>
+          <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ encounters|length }}</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-bold uppercase text-slate-400">Treatment Plans</span>
+          <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ plans|length }}</p>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-bold uppercase text-slate-400">Issued Prescriptions</span>
+          <p class="text-2xl font-extrabold text-emerald-700 mt-1">{{ prescriptions|length }}</p>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- 1. APPOINTMENT WORKFLOW -->
+      {% if section in ['dashboard', 'appointments', 'patient-detail'] %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex items-center justify-between">
+          <div>
+            <h2 class="text-lg font-extrabold text-slate-900">Clinical Appointment Workflow</h2>
+            <p class="text-xs text-slate-500">Check in patients, start consultations, complete appointments, or open their clinical file.</p>
+          </div>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-500">
+                <th class="py-2.5">Apt #</th>
+                <th class="py-2.5">Date &amp; Time</th>
+                <th class="py-2.5">Patient</th>
+                <th class="py-2.5">Procedure / Reason</th>
+                <th class="py-2.5">Status</th>
+                <th class="py-2.5 text-right">Clinical Workflow Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in appointments[:20] %}
+              <tr class="border-b border-slate-100 hover:bg-slate-50">
+                <td class="py-3 font-mono font-bold text-[#01578c]">{{ a.appointment_number }}</td>
+                <td class="py-3">{{ a.appointment_date.isoformat() }} • {{ a.start_time.strftime('%H:%M') }}</td>
+                <td class="py-3">
+                  <a href="/doctor/patients/{{ a.patient_id }}" class="font-bold text-slate-900 hover:text-[#01578c] underline">
+                    {{ a.patient.full_name if a.patient else '' }}
+                  </a>
+                  <span class="block text-[11px] text-slate-400">{{ a.patient.patient_number if a.patient else '' }}</span>
+                </td>
+                <td class="py-3">
+                  <span class="font-semibold block">{{ a.service.name if a.service else 'Consultation' }}</span>
+                  <span class="text-slate-500">{{ a.reason_for_visit[:60] }}</span>
+                </td>
+                <td class="py-3">
+                  <span class="px-2.5 py-0.5 rounded-full font-bold bg-sky-50 text-[#01578c]">{{ a.status }}</span>
+                </td>
+                <td class="py-3 text-right space-x-1">
+                  <button type="button" onclick="setAptStatus({{ a.id }}, 'CheckedIn')"
+                    class="px-2.5 py-1 rounded-lg bg-sky-100 text-[#01578c] font-bold hover:bg-sky-200">Check In</button>
+                  <button type="button" onclick="setAptStatus({{ a.id }}, 'InProgress')"
+                    class="px-2.5 py-1 rounded-lg bg-amber-100 text-amber-800 font-bold hover:bg-amber-200">Start</button>
+                  <button type="button" onclick="setAptStatus({{ a.id }}, 'Completed')"
+                    class="px-2.5 py-1 rounded-lg bg-emerald-100 text-emerald-800 font-bold hover:bg-emerald-200">Complete</button>
+                  <a href="/doctor/patients/{{ a.patient_id }}"
+                    class="inline-block px-2.5 py-1 rounded-lg bg-slate-900 text-white font-bold">Open File</a>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- 2. PATIENT DIRECTORY -->
+      {% if section in ['patients'] %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <h2 class="text-lg font-extrabold text-slate-900">Authorized Patient Directory</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {% for p in patients %}
+          <div class="p-4 rounded-xl border border-slate-200 flex flex-col justify-between gap-3">
+            <div>
+              <span class="font-mono text-xs font-bold text-[#01578c]">{{ p.patient_number }}</span>
+              <h3 class="font-bold text-base text-slate-900">{{ p.full_name }}</h3>
+              <p class="text-xs text-slate-500">📞 {{ p.phone }} • {{ p.gender or 'N/A' }} • Blood: {{ p.blood_group or 'N/A' }}</p>
+            </div>
+            <div class="flex items-center justify-between pt-2 border-t border-slate-100">
+              <a href="/doctor/patients/{{ p.id }}" class="px-3.5 py-1.5 rounded-lg bg-[#01578c] text-white text-xs font-bold">
+                Open Clinical File →
+              </a>
+              <a href="/api/v1/patients/{{ p.id }}/treatment-summary.pdf" target="_blank" class="text-xs font-bold text-slate-600 hover:underline">
+                Summary PDF
+              </a>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- 3. INTERACTIVE FDI DENTAL CHART (DOCTOR EDITABLE) -->
+      {% if section in ['dental-chart', 'patient-detail', 'dashboard'] and selected_patient and dental_chart %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <span class="text-xs font-bold uppercase text-[#01578c]">FDI Odontogram — {{ selected_patient.full_name }} ({{ selected_patient.patient_number }})</span>
+            <h2 class="text-lg font-extrabold text-slate-900">Click Any FDI Tooth to Record Findings &amp; Condition</h2>
+          </div>
+        </div>
+
+        <div class="fdi-arch-grid">
+          {% for t in dental_chart.permanent_teeth[:16] %}
+          <button type="button" onclick="selectDoctorTooth('{{ t.tooth_fdi }}', '{{ t.condition_status }}', '{{ t.surfaces or '' }}')"
+            class="tooth-card tooth-status-{{ t.condition_status }}">
+            <span class="block text-xs font-extrabold">#{{ t.tooth_fdi }}</span>
+            <span class="block text-[10px] truncate">{{ t.condition_status }}</span>
+          </button>
+          {% endfor %}
+        </div>
+
+        <div class="fdi-arch-grid">
+          {% for t in dental_chart.permanent_teeth[16:] %}
+          <button type="button" onclick="selectDoctorTooth('{{ t.tooth_fdi }}', '{{ t.condition_status }}', '{{ t.surfaces or '' }}')"
+            class="tooth-card tooth-status-{{ t.condition_status }}">
+            <span class="block text-xs font-extrabold">#{{ t.tooth_fdi }}</span>
+            <span class="block text-[10px] truncate">{{ t.condition_status }}</span>
+          </button>
+          {% endfor %}
+        </div>
+
+        <!-- Tooth Finding Update Form -->
+        <form onsubmit="saveDoctorToothFinding(event)" class="p-4 rounded-xl bg-[#f6f9f9] border border-slate-200 grid grid-cols-1 sm:grid-cols-6 gap-3 items-end text-xs">
+          <div>
+            <label for="fdi-code" class="block font-bold text-slate-700 mb-1">FDI Tooth # *</label>
+            <input id="fdi-code" type="text" required value="46" class="w-full px-3 py-2 rounded-lg border border-slate-300 font-bold" />
+          </div>
+          <div>
+            <label for="fdi-status" class="block font-bold text-slate-700 mb-1">Condition *</label>
+            <select id="fdi-status" class="w-full px-3 py-2 rounded-lg border border-slate-300">
+              <option value="Sound">Sound</option>
+              <option value="Caries">Caries</option>
+              <option value="Filled">Filled</option>
+              <option value="RootCanalTreated">RootCanalTreated</option>
+              <option value="Crown">Crown</option>
+              <option value="Implant">Implant</option>
+              <option value="ExtractionIndicated">ExtractionIndicated</option>
+              <option value="Missing">Missing</option>
+              <option value="BridgePontic">BridgePontic</option>
+              <option value="Fractured">Fractured</option>
+              <option value="Sealant">Sealant</option>
+            </select>
+          </div>
+          <div>
+            <label for="fdi-surface" class="block font-bold text-slate-700 mb-1">Surfaces (e.g. MOD, DO)</label>
+            <input id="fdi-surface" type="text" placeholder="DO / MOD / Occlusal" class="w-full px-3 py-2 rounded-lg border border-slate-300" />
+          </div>
+          <div class="sm:col-span-2">
+            <label for="fdi-notes" class="block font-bold text-slate-700 mb-1">Clinical Finding &amp; Recommendation *</label>
+            <input id="fdi-notes" type="text" required placeholder="Document tooth finding..." class="w-full px-3 py-2 rounded-lg border border-slate-300" />
+          </div>
+          <button type="submit" class="py-2 px-4 rounded-lg bg-[#01578c] text-white font-bold hover:bg-[#013f66]">
+            Save Tooth Finding
+          </button>
+        </form>
+      </section>
+      {% endif %}
+
+      <!-- 4. CLINICAL ENCOUNTERS & AMENDMENTS -->
+      {% if section in ['clinical-records', 'patient-detail'] and selected_patient %}
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3">
+          <h2 class="text-lg font-extrabold text-slate-900">Record Clinical Consultation</h2>
+          <p class="text-xs text-slate-500">Patient: <strong>{{ selected_patient.full_name }}</strong></p>
+          <form onsubmit="createDoctorEncounter(event)" class="space-y-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Presenting Complaint *</label>
+              <textarea id="enc-complaint" rows="2" required class="w-full px-3 py-2 rounded-xl border border-slate-300"></textarea>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Examination Findings</label>
+              <textarea id="enc-exam" rows="2" class="w-full px-3 py-2 rounded-xl border border-slate-300"></textarea>
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Diagnosis Summary *</label>
+              <input id="enc-diagnosis" type="text" required class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div>
+              <label class="block font-bold text-slate-700 mb-1">Treatment Performed</label>
+              <textarea id="enc-treatment" rows="2" class="w-full px-3 py-2 rounded-xl border border-slate-300"></textarea>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Follow-Up Instructions</label>
+                <input id="enc-followup" type="text" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+              </div>
+              <div>
+                <label class="block font-bold text-slate-700 mb-1">Next Recommended Visit</label>
+                <input id="enc-next-date" type="date" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+              </div>
+            </div>
+            <label class="flex items-center gap-2">
+              <input id="enc-finalize" type="checkbox" checked class="h-4 w-4 rounded" />
+              <span class="font-bold text-slate-700">Sign &amp; Finalize Clinical Note Immediately</span>
+            </label>
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-[#01578c] text-white font-bold">
+              Save Clinical Consultation
+            </button>
+          </form>
+        </div>
+
+        <div class="lg:col-span-7 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3">
+          <h2 class="text-lg font-extrabold text-slate-900">Recorded Clinical Encounters</h2>
+          {% for e in encounters %}
+          <div class="p-4 rounded-xl border border-slate-200 text-xs space-y-1.5">
+            <div class="flex justify-between">
+              <span class="font-mono font-bold text-[#01578c]">{{ e.encounter_number }} • {{ e.visit_date.isoformat() }}</span>
+              <span class="px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold">{{ e.status }} (v{{ e.version }})</span>
+            </div>
+            <p><strong>Patient:</strong> {{ e.patient.full_name if e.patient else '' }}</p>
+            <p><strong>Complaint:</strong> {{ e.presenting_complaint }}</p>
+            <p><strong>Diagnosis:</strong> {{ e.diagnosis_summary or '-' }}</p>
+            <p><strong>Treatment:</strong> {{ e.treatment_performed or '-' }}</p>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- 5. TREATMENT PLANS & PROCEDURES -->
+      {% if section in ['treatments', 'patient-detail'] and selected_patient %}
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3">
+          <h2 class="text-lg font-extrabold text-slate-900">Create Treatment Plan ({{ selected_patient.full_name }})</h2>
+          <form onsubmit="createDoctorTreatmentPlan(event)" class="space-y-3 text-xs">
+            <input id="tp-title" type="text" required placeholder="Plan Title (e.g. Full Mouth Scaling & Crown #46)" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            <div class="grid grid-cols-3 gap-2">
+              <input id="tp-proc" type="text" required placeholder="Procedure Name" class="px-3 py-2 rounded-xl border border-slate-300" />
+              <input id="tp-tooth" type="text" placeholder="FDI Tooth #" class="px-3 py-2 rounded-xl border border-slate-300" />
+              <input id="tp-cost" type="number" step="0.01" required placeholder="Cost (PKR)" class="px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-[#01578c] text-white font-bold">Create Treatment Plan</button>
+          </form>
+        </div>
+
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3">
+          <h2 class="text-lg font-extrabold text-slate-900">Record Completed Procedure ({{ selected_patient.full_name }})</h2>
+          <form onsubmit="createDoctorTreatmentRecord(event)" class="space-y-3 text-xs">
+            <div class="grid grid-cols-2 gap-2">
+              <input id="tr-proc" type="text" required placeholder="Procedure Performed" class="px-3 py-2 rounded-xl border border-slate-300" />
+              <input id="tr-tooth" type="text" placeholder="FDI Tooth # (optional)" class="px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <textarea id="tr-desc" rows="2" required placeholder="Clinical procedure notes & materials used..." class="w-full px-3 py-2 rounded-xl border border-slate-300"></textarea>
+            <input id="tr-postop" type="text" placeholder="Post-operative patient instructions" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold">Record Completed Treatment</button>
+          </form>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- 6. PRESCRIPTIONS (Rx) -->
+      {% if section in ['prescriptions', 'patient-detail'] and selected_patient %}
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3">
+          <h2 class="text-lg font-extrabold text-slate-900">Issue Clinical Prescription (Rx)</h2>
+          <form onsubmit="issueDoctorPrescription(event)" class="space-y-3 text-xs">
+            <input id="rx-diag" type="text" placeholder="Clinical Indication / Diagnosis Note" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            <div class="grid grid-cols-2 gap-2">
+              <input id="rx-med" type="text" required placeholder="Medication Name *" class="px-3 py-2 rounded-xl border border-slate-300" />
+              <input id="rx-strength" type="text" placeholder="Strength (e.g. 500 mg)" class="px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div class="grid grid-cols-3 gap-2">
+              <input id="rx-dosage" type="text" required placeholder="Dosage (1 Tab)" class="px-3 py-2 rounded-xl border border-slate-300" />
+              <input id="rx-freq" type="text" required placeholder="Frequency (BID/TID)" class="px-3 py-2 rounded-xl border border-slate-300" />
+              <input id="rx-dur" type="text" required placeholder="Duration (5 Days)" class="px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <input id="rx-instr" type="text" placeholder="Special instructions (e.g. Take after meals)" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-[#01578c] text-white font-bold">Sign &amp; Issue Prescription</button>
+          </form>
+        </div>
+
+        <div class="lg:col-span-7 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3">
+          <h2 class="text-lg font-extrabold text-slate-900">Issued Prescriptions</h2>
+          {% for rx in prescriptions %}
+          <div class="p-4 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+            <div>
+              <span class="font-mono font-bold text-[#01578c]">{{ rx.prescription_number }}</span>
+              <p class="font-bold text-slate-900">{{ rx.patient.full_name if rx.patient else '' }} — {{ rx.issue_date.isoformat() }}</p>
+              <p class="text-slate-500">{{ rx.items|length }} medication(s) prescribed</p>
+            </div>
+            <a href="/api/v1/prescriptions/{{ rx.id }}/pdf" target="_blank" class="px-3 py-1.5 rounded-lg bg-[#01578c] text-white font-bold">
+              Rx PDF
+            </a>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- 7. X-RAY & DOCUMENT UPLOAD (PRIVATE STORAGE) -->
+      {% if section in ['documents', 'patient-detail'] %}
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3">
+          <h2 class="text-lg font-extrabold text-slate-900">Upload Dental X-Ray or Clinical Document</h2>
+          <p class="text-xs text-slate-500">Select the patient, attach the radiograph/image (`.png`, `.jpg`, `.pdf`, `.dcm`), and publish it to their Patient Portal.</p>
+          <form onsubmit="uploadDoctorDocument(event)" class="space-y-3 text-xs">
+            <div>
+              <label for="doc-patient-id" class="block font-bold text-slate-700 mb-1">Select Patient *</label>
+              <select id="doc-patient-id" required onchange="switchDoctorActivePatient(this.value)" class="w-full px-3 py-2 rounded-xl border border-slate-300 font-semibold">
+                {% for p in patients %}
+                <option value="{{ p.id }}" {% if selected_patient and p.id == selected_patient.id %}selected{% endif %}>
+                  {{ p.patient_number }} — {{ p.full_name }} ({{ p.email or p.phone }})
+                </option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="doc-title" class="block font-bold text-slate-700 mb-1">X-Ray / Document Title *</label>
+              <input id="doc-title" type="text" required placeholder="e.g. Periapical Digital X-Ray — Tooth #46" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <div>
+                <label for="doc-type" class="block font-bold text-slate-700 mb-1">Radiograph Type</label>
+                <select id="doc-type" class="w-full px-3 py-2 rounded-xl border border-slate-300">
+                  <option value="X-Ray">Dental X-Ray</option>
+                  <option value="OPG">OPG Panoramic</option>
+                  <option value="Bitewing">Bitewing X-Ray</option>
+                  <option value="CBCT/DICOM">CBCT / DICOM</option>
+                  <option value="ClinicalPhoto">Clinical Photo</option>
+                  <option value="LabReport">Lab Report</option>
+                </select>
+              </div>
+              <div>
+                <label for="doc-tooth" class="block font-bold text-slate-700 mb-1">FDI Tooth # (Optional)</label>
+                <input id="doc-tooth" type="text" placeholder="e.g. 46 or 16" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+              </div>
+            </div>
+            <div>
+              <label for="doc-desc" class="block font-bold text-slate-700 mb-1">Radiographic Findings / Note for Patient</label>
+              <textarea id="doc-desc" rows="2" placeholder="e.g. Post-obturation radiograph showing dense root canal fill to apex." class="w-full px-3 py-2 rounded-xl border border-slate-300"></textarea>
+            </div>
+            <div>
+              <label for="doc-file" class="block font-bold text-slate-700 mb-1">Select X-Ray Image or PDF File *</label>
+              <input id="doc-file" type="file" required accept=".jpg,.jpeg,.png,.pdf,.dcm" class="w-full text-xs p-2 rounded-xl border border-slate-200 bg-slate-50" />
+            </div>
+            <label class="flex items-center gap-2 pt-1 font-semibold text-slate-700 cursor-pointer">
+              <input id="doc-visible" type="checkbox" checked class="h-4 w-4 rounded text-[#01578c]" />
+              <span>Release immediately to Patient Portal (patient can view &amp; download)</span>
+            </label>
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-[#01578c] hover:bg-[#013f66] text-white font-bold transition">
+              Upload X-Ray to Patient Record
+            </button>
+          </form>
+        </div>
+
+        <div class="lg:col-span-7 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3">
+          <div class="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 class="text-lg font-extrabold text-slate-900">Recent Uploads ({{ selected_patient.full_name if selected_patient else 'Patient' }})</h2>
+              <p class="text-xs text-slate-500">View, hide from workspace, or delete uploaded X-rays/photos.</p>
+            </div>
+            {% if documents %}
+            <div class="flex items-center gap-2">
+              <button type="button" onclick="clearRecentUploadsView()"
+                class="px-3 py-1.5 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100 text-xs font-bold">
+                Hide Recent List
+              </button>
+              {% if selected_patient %}
+              <button type="button" onclick="clearAllPatientDocuments({{ selected_patient.id }}, '{{ selected_patient.full_name }}')"
+                class="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 text-xs font-bold">
+                🗑 Remove All Recent Uploads
+              </button>
+              {% endif %}
+            </div>
+            {% endif %}
+          </div>
+          {% if not documents %}
+          <p class="text-xs text-slate-500 py-6 text-center">No X-rays uploaded for this patient yet.</p>
+          {% else %}
+          <div id="recent-uploads-grid" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {% for d in documents %}
+            <div id="doc-card-{{ d.id }}" class="rounded-xl border border-slate-200 overflow-hidden bg-slate-50 flex flex-col justify-between text-xs">
+              {% if d.file_extension in ['.png', '.jpg', '.jpeg'] %}
+              <a href="/api/v1/documents/{{ d.id }}/download" target="_blank" class="block bg-slate-950 p-2 text-center">
+                <img src="/api/v1/documents/{{ d.id }}/download" alt="{{ d.title }}" class="max-h-40 w-auto mx-auto rounded object-contain" />
+              </a>
+              {% endif %}
+              <div class="p-3.5 bg-white flex items-center justify-between gap-2">
+                <div>
+                  <span class="px-2 py-0.5 rounded bg-sky-50 text-[#01578c] font-bold">{{ d.document_type }}</span>
+                  {% if d.tooth_fdi %}<span class="font-bold text-slate-500 ml-1">#{{ d.tooth_fdi }}</span>{% endif %}
+                  <strong class="block text-slate-900 mt-1">{{ d.title }}</strong>
+                  <span class="block text-slate-500">{{ d.clinical_description or d.original_filename }}</span>
+                  <span class="block text-[11px] text-slate-400 mt-0.5">Patient: {{ d.patient.full_name if d.patient else '' }} • {% if d.is_patient_visible %}Visible to Patient{% else %}Internal Only{% endif %}</span>
+                </div>
+                <div class="flex flex-col gap-1.5 shrink-0">
+                  <a href="/api/v1/documents/{{ d.id }}/download" target="_blank" class="px-3 py-1.5 rounded-lg bg-slate-900 text-white font-bold text-center">
+                    Open
+                  </a>
+                  <button type="button" onclick="deleteDoctorDocument({{ d.id }}, '{{ d.title|replace("'", "") }}')"
+                    class="px-3 py-1.5 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold">
+                    Remove
+                  </button>
+                </div>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- 8. SCHEDULE & PROFILE -->
+      {% if section in ['schedule', 'profile'] %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <h2 class="text-lg font-extrabold text-slate-900">Clinician Profile &amp; Weekly Working Hours</h2>
+        <p class="text-xs text-slate-600">
+          <strong>{{ doctor.full_name }}</strong> ({{ doctor.doctor_code }}) • {{ doctor.specialization }} • Consultation Fee: PKR {{ "{:,.2f}".format(doctor.consultation_fee) }}
+        </p>
+        <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 text-xs">
+          {% set day_names = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] %}
+          {% for s in doctor.schedules %}
+          <div class="p-3.5 rounded-xl border {% if s.is_available %}border-emerald-200 bg-emerald-50/40{% else %}border-slate-200 bg-slate-100{% endif %}">
+            <strong class="block text-slate-900">{{ day_names[s.day_of_week] }}</strong>
+            {% if s.is_available %}
+            <span class="text-emerald-700 font-semibold">{{ s.start_time.strftime('%H:%M') }} – {{ s.end_time.strftime('%H:%M') }}</span>
+            {% else %}
+            <span class="text-slate-400">Closed</span>
+            {% endif %}
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+    </main>
+  </div>
+
+  <script src="/static/js/rumi.js"></script>
+  <script>
+    const ACTIVE_PATIENT_ID = {{ selected_patient.id if selected_patient else 'null' }};
+
+    function switchDoctorActivePatient(patId) {
+      if (!patId) return;
+      document.cookie = `rumi_doctor_patient_id=${encodeURIComponent(patId)}; path=/; max-age=86400; SameSite=Lax`;
+      const path = window.location.pathname;
+      if (path.startsWith('/doctor/patients/')) {
+        window.location.href = '/doctor/patients/' + encodeURIComponent(patId);
+      } else {
+        window.location.href = path + '?patient_id=' + encodeURIComponent(patId);
+      }
+    }
+
+    function clearRecentUploadsView() {
+      const grid = document.getElementById('recent-uploads-grid');
+      if (grid) {
+        grid.innerHTML = '<p class="text-xs text-slate-500 py-6 text-center col-span-2">Recent uploads list cleared from workspace view.</p>';
+      }
+      showToast('Recent uploads list hidden from workspace.');
+    }
+
+    async function deleteDoctorDocument(docId, docTitle) {
+      if (!confirm(`Remove uploaded X-ray/document "${docTitle}"?`)) return;
+      try {
+        await rumiApi(`/api/v1/documents/${docId}`, { method: 'DELETE' });
+        const card = document.getElementById(`doc-card-${docId}`);
+        if (card) card.remove();
+        showToast(`Removed "${docTitle}".`);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function clearAllPatientDocuments(patId, patName) {
+      if (!confirm(`Remove all recent uploaded X-rays/documents for ${patName}?`)) return;
+      try {
+        const res = await rumiApi(`/api/v1/documents/patient/${patId}/clear`, { method: 'DELETE' });
+        showToast(res.message || 'Recent uploads removed.');
+        setTimeout(() => window.location.reload(), 500);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function setAptStatus(aptId, statusVal) {
+      try {
+        await rumiApi(`/api/v1/appointments/${aptId}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: statusVal })
+        });
+        showToast(`Appointment marked as ${statusVal}.`);
+        setTimeout(() => window.location.reload(), 500);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    function selectDoctorTooth(fdi, status, surfaces) {
+      document.getElementById('fdi-code').value = fdi;
+      document.getElementById('fdi-status').value = status;
+      document.getElementById('fdi-surface').value = surfaces || '';
+      document.getElementById('fdi-notes').focus();
+    }
+
+    async function saveDoctorToothFinding(e) {
+      e.preventDefault();
+      if (!ACTIVE_PATIENT_ID) return;
+      try {
+        await rumiApi(`/api/v1/dental-chart/${ACTIVE_PATIENT_ID}/tooth`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            tooth_fdi: document.getElementById('fdi-code').value.trim(),
+            condition_status: document.getElementById('fdi-status').value,
+            surfaces: document.getElementById('fdi-surface').value.trim() || null,
+            clinical_notes: document.getElementById('fdi-notes').value.trim()
+          })
+        });
+        showToast('FDI Dental Chart updated.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function createDoctorEncounter(e) {
+      e.preventDefault();
+      if (!ACTIVE_PATIENT_ID) return;
+      try {
+        const nextDate = document.getElementById('enc-next-date').value;
+        await rumiApi('/api/v1/clinical-records', {
+          method: 'POST',
+          body: JSON.stringify({
+            patient_id: ACTIVE_PATIENT_ID,
+            presenting_complaint: document.getElementById('enc-complaint').value.trim(),
+            examination_findings: document.getElementById('enc-exam').value.trim() || null,
+            diagnosis_summary: document.getElementById('enc-diagnosis').value.trim(),
+            treatment_performed: document.getElementById('enc-treatment').value.trim() || null,
+            follow_up_instructions: document.getElementById('enc-followup').value.trim() || null,
+            next_recommended_visit_date: nextDate ? nextDate : null,
+            finalize: document.getElementById('enc-finalize').checked
+          })
+        });
+        showToast('Clinical encounter saved to PostgreSQL.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function createDoctorTreatmentPlan(e) {
+      e.preventDefault();
+      if (!ACTIVE_PATIENT_ID) return;
+      try {
+        await rumiApi('/api/v1/treatments/plans', {
+          method: 'POST',
+          body: JSON.stringify({
+            patient_id: ACTIVE_PATIENT_ID,
+            title: document.getElementById('tp-title').value.trim(),
+            items: [{
+              procedure_name: document.getElementById('tp-proc').value.trim(),
+              tooth_fdi: document.getElementById('tp-tooth').value.trim() || null,
+              estimated_cost: parseFloat(document.getElementById('tp-cost').value || '0')
+            }]
+          })
+        });
+        showToast('Treatment plan created.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function createDoctorTreatmentRecord(e) {
+      e.preventDefault();
+      if (!ACTIVE_PATIENT_ID) return;
+      try {
+        await rumiApi('/api/v1/treatments/records', {
+          method: 'POST',
+          body: JSON.stringify({
+            patient_id: ACTIVE_PATIENT_ID,
+            procedure_name: document.getElementById('tr-proc').value.trim(),
+            tooth_fdi: document.getElementById('tr-tooth').value.trim() || null,
+            clinical_description: document.getElementById('tr-desc').value.trim(),
+            post_op_instructions: document.getElementById('tr-postop').value.trim() || null
+          })
+        });
+        showToast('Treatment record saved.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function issueDoctorPrescription(e) {
+      e.preventDefault();
+      if (!ACTIVE_PATIENT_ID) return;
+      try {
+        await rumiApi('/api/v1/prescriptions', {
+          method: 'POST',
+          body: JSON.stringify({
+            patient_id: ACTIVE_PATIENT_ID,
+            diagnosis_notes: document.getElementById('rx-diag').value.trim() || null,
+            items: [{
+              medication_name: document.getElementById('rx-med').value.trim(),
+              strength: document.getElementById('rx-strength').value.trim() || null,
+              dosage: document.getElementById('rx-dosage').value.trim(),
+              route: 'Oral',
+              frequency: document.getElementById('rx-freq').value.trim(),
+              duration: document.getElementById('rx-dur').value.trim(),
+              instructions: document.getElementById('rx-instr').value.trim() || null
+            }]
+          })
+        });
+        showToast('Prescription signed and issued.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+
+    async function uploadDoctorDocument(e) {
+      e.preventDefault();
+      const patSelect = document.getElementById('doc-patient-id');
+      const targetPatId = (patSelect && patSelect.value) ? patSelect.value : ACTIVE_PATIENT_ID;
+      if (!targetPatId) {
+        showToast('Please select a patient first.', 'error');
+        return;
+      }
+      const fileInput = document.getElementById('doc-file');
+      if (!fileInput.files.length) return;
+      const fd = new FormData();
+      fd.append('patient_id', targetPatId);
+      fd.append('title', document.getElementById('doc-title').value.trim());
+      fd.append('document_type', document.getElementById('doc-type').value);
+      fd.append('tooth_fdi', document.getElementById('doc-tooth').value.trim());
+      const descEl = document.getElementById('doc-desc');
+      if (descEl && descEl.value.trim()) {
+        fd.append('clinical_description', descEl.value.trim());
+      }
+      const visEl = document.getElementById('doc-visible');
+      fd.append('is_patient_visible', visEl ? (visEl.checked ? 'true' : 'false') : 'true');
+      fd.append('file', fileInput.files[0]);
+      try {
+        await rumiApi('/api/v1/documents/upload', { method: 'POST', body: fd });
+        document.cookie = `rumi_doctor_patient_id=${encodeURIComponent(targetPatId)}; path=/; max-age=86400; SameSite=Lax`;
+        showToast('X-Ray / clinical document uploaded and shared with patient.');
+        setTimeout(() => {
+          const path = window.location.pathname;
+          if (path.startsWith('/doctor/patients/')) {
+            window.location.href = '/doctor/patients/' + encodeURIComponent(targetPatId);
+          } else {
+            window.location.href = path + '?patient_id=' + encodeURIComponent(targetPatId);
+          }
+        }, 600);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

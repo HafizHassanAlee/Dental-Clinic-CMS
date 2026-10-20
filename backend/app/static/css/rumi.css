@@ -1,0 +1,93 @@
+:root {
+  --rumi-blue: #01578c;
+  --rumi-blue-dark: #013f66;
+  --rumi-teal: #29d8db;
+  --rumi-teal-dark: #14b8bb;
+  --rumi-bg-soft: #f6f9f9;
+  --rumi-text-dark: #1e293b;
+  --rumi-text-muted: #64748b;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color: var(--rumi-text-dark);
+  background-color: #ffffff;
+}
+
+/* Accessible focus outlines */
+a:focus-visible,
+button:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 2px solid var(--rumi-teal-dark);
+  outline-offset: 2px;
+}
+
+.bg-rumi-blue { background-color: var(--rumi-blue); }
+.bg-rumi-blue-dark { background-color: var(--rumi-blue-dark); }
+.bg-rumi-teal { background-color: var(--rumi-teal); }
+.bg-rumi-soft { background-color: var(--rumi-bg-soft); }
+.text-rumi-blue { color: var(--rumi-blue); }
+.text-rumi-teal { color: var(--rumi-teal-dark); }
+.border-rumi-blue { border-color: var(--rumi-blue); }
+
+/* FDI Odontogram Interactive Tooth Grid */
+.fdi-arch-grid {
+  display: grid;
+  grid-template-columns: repeat(16, minmax(46px, 1fr));
+  gap: 0.4rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.fdi-primary-grid {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(52px, 1fr));
+  gap: 0.45rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+}
+
+.tooth-card {
+  border: 2px solid #cbd5e1;
+  border-radius: 0.75rem;
+  padding: 0.45rem 0.25rem;
+  text-align: center;
+  background: #ffffff;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.tooth-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(1, 87, 140, 0.12);
+  border-color: var(--rumi-blue);
+}
+
+.tooth-card.selected {
+  border-color: var(--rumi-blue);
+  box-shadow: 0 0 0 3px rgba(41, 216, 219, 0.45);
+}
+
+/* Tooth status visual indicators */
+.tooth-status-Sound { border-color: #cbd5e1; background: #ffffff; }
+.tooth-status-Caries { border-color: #ef4444; background: #fef2f2; color: #991b1b; }
+.tooth-status-Filled { border-color: #3b82f6; background: #eff6ff; color: #1e40af; }
+.tooth-status-Crown { border-color: #f59e0b; background: #fffbeb; color: #92400e; }
+.tooth-status-RootCanalTreated { border-color: #8b5cf6; background: #f5f3ff; color: #5b21b6; }
+.tooth-status-Missing { border-color: #94a3b8; background: #f1f5f9; color: #64748b; opacity: 0.75; }
+.tooth-status-ExtractionIndicated { border-color: #dc2626; background: #fee2e2; color: #7f1d1d; }
+.tooth-status-Implant { border-color: #0d9488; background: #f0fdfa; color: #115e59; }
+.tooth-status-BridgePontic { border-color: #d97706; background: #fef3c7; color: #78350f; }
+.tooth-status-Fractured { border-color: #ea580c; background: #ffedd5; color: #9a3412; }
+.tooth-status-Sealant { border-color: #10b981; background: #ecfdf5; color: #065f46; }
+
+@media print {
+  .no-print { display: none !important; }
+}

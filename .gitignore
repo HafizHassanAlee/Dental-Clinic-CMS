@@ -1,0 +1,38 @@
+# Environment variables & secrets (NEVER commit real credentials)
+.env
+.env.*
+!.env.example
+backend/.env
+backend/.env.*
+!backend/.env.example
+
+# Python bytecode & virtual environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+env/
+ENV/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Private clinical document uploads & database backups
+private_uploads/
+backend/private_uploads/
+backups/
+backend/backups/
+
+# Frontend dependencies & build outputs
+frontend/node_modules/
+frontend/dist/
+*.log
+
+# IDE & OS files
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store

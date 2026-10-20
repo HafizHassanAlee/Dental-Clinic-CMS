@@ -1,0 +1,834 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ page_title }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/rumi.css" />
+  <script>window.RUMI_CSRF_TOKEN = "{{ csrf_token or '' }}";</script>
+</head>
+<body class="min-h-screen bg-[#f6f9f9] text-slate-800 flex flex-col lg:flex-row">
+  <!-- Admin Sidebar -->
+  <aside class="w-full lg:w-64 bg-slate-950 text-white shrink-0 flex flex-col justify-between">
+    <div>
+      <div class="p-5 border-b border-slate-800 flex items-center gap-2.5">
+        <div class="bg-white p-1.5 rounded-lg">
+          <img src="/static/images/rumi-logo.png" alt="Rumi Dental Care" class="h-7 w-auto" />
+        </div>
+        <div>
+          <span class="block font-extrabold text-sm leading-none">RUMI DENTAL</span>
+          <span class="block text-[11px] text-[#29d8db] font-semibold mt-0.5">Administration</span>
+        </div>
+      </div>
+
+      <div class="px-5 py-3 bg-slate-900 border-b border-slate-800 text-xs">
+        <span class="text-slate-400 block">Signed in Administrator:</span>
+        <strong class="text-white text-sm block truncate">{{ current_user.full_name }}</strong>
+        <span class="text-[11px] text-[#29d8db]">{{ current_user.email }}</span>
+      </div>
+
+      <nav class="p-3 space-y-1 text-xs sm:text-sm font-medium flex lg:block overflow-x-auto" aria-label="Administrator Navigation">
+        {% set admin_nav = [
+          ('dashboard', 'Executive Dashboard', '/admin/dashboard'),
+          ('patients', 'Patients Management', '/admin/patients'),
+          ('doctors', 'Doctors Management', '/admin/doctors'),
+          ('staff', 'Staff & Permissions', '/admin/staff'),
+          ('appointments', 'Appointments & Calendar', '/admin/appointments'),
+          ('services', 'Services & PKR Pricing', '/admin/services'),
+          ('treatments', 'Treatments Overview', '/admin/treatments'),
+          ('invoices', 'Invoices & Estimates', '/admin/invoices'),
+          ('payments', 'Recorded Payments', '/admin/payments'),
+          ('receipts', 'Official Receipts', '/admin/receipts'),
+          ('reviews', 'Review Moderation', '/admin/reviews'),
+          ('reports', 'Operational Reports', '/admin/reports'),
+          ('audit-logs', 'Security Audit Logs', '/admin/audit-logs'),
+          ('settings', 'Clinic Settings', '/admin/settings')
+        ] %}
+        {% for key, label, href in admin_nav %}
+        <a href="{{ href }}"
+          class="block whitespace-nowrap px-3.5 py-2 rounded-xl transition {% if section == key %}bg-[#01578c] text-white font-bold{% else %}text-slate-300 hover:bg-white/10{% endif %}">
+          {{ label }}
+        </a>
+        {% endfor %}
+      </nav>
+    </div>
+
+    <div class="hidden lg:block p-4 border-t border-slate-800 space-y-2 text-xs">
+      <a href="/api/v1/payments/export.csv" class="block w-full text-center py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold">
+        📊 Export Payments CSV
+      </a>
+      <a href="/" class="block text-center text-slate-400 hover:text-white py-1">← Public Website</a>
+      <button type="button" onclick="handleLogout()" class="w-full py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-200 font-semibold">
+        Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Admin Area -->
+  <div class="flex-1 flex flex-col min-w-0">
+    <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h1 class="text-xl font-extrabold text-slate-900">
+          {{ clinic.clinic_name }} — Operational &amp; Financial Administration
+        </h1>
+        <p class="text-xs text-slate-500">
+          {{ clinic.address_line }} • Currency: PKR • Revenue calculated strictly from verified Recorded Payments
+        </p>
+      </div>
+      <div class="flex items-center gap-2.5">
+        <a href="/api/v1/payments/export.csv" class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50">
+          Export Financial CSV
+        </a>
+        <a href="/docs" target="_blank" class="px-3.5 py-2 rounded-xl bg-[#01578c] text-white text-xs font-bold hover:bg-[#013f66]">
+          OpenAPI / Swagger Docs
+        </a>
+      </div>
+    </header>
+
+    <main class="p-6 space-y-8 max-w-7xl w-full mx-auto">
+      <!-- KPI Cards -->
+      {% if section in ['dashboard', 'reports'] %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-bold uppercase text-slate-400">Total Registered Patients</span>
+          <p class="text-2xl font-extrabold text-[#01578c] mt-1">{{ patients|length }}</p>
+          <span class="text-xs text-slate-500">Active clinic directory</span>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-bold uppercase text-slate-400">Total Appointments</span>
+          <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ appointments|length }}</p>
+          <span class="text-xs text-slate-500">{{ doctors|length }} active clinician(s)</span>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-bold uppercase text-slate-400">Recorded Revenue (PKR)</span>
+          <p class="text-2xl font-extrabold text-emerald-700 mt-1">PKR {{ "{:,.2f}".format(total_recorded_revenue) }}</p>
+          <span class="text-xs text-slate-500">Backed by {{ receipts|length }} official receipt(s)</span>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-bold uppercase text-slate-400">Outstanding Receivables</span>
+          <p class="text-2xl font-extrabold text-amber-600 mt-1">PKR {{ "{:,.2f}".format(outstanding_balance) }}</p>
+          <span class="text-xs text-slate-500">{{ invoices|length }} total invoice(s)</span>
+        </div>
+      </div>
+
+      <!-- Analytics Chart Row -->
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h2 class="text-sm font-bold text-slate-900 mb-3">Financial Ledger Overview (PKR)</h2>
+          <canvas id="adminFinanceChart" height="140"></canvas>
+        </div>
+        <div class="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm">
+          <h2 class="text-sm font-bold text-slate-900 mb-3">Appointments Status Distribution</h2>
+          <canvas id="adminAptChart" height="140"></canvas>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- 1. PATIENTS MANAGEMENT -->
+      {% if section in ['patients', 'dashboard'] %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 class="text-lg font-extrabold text-slate-900">Patient Registry &amp; Account Administration</h2>
+            <p class="text-xs text-slate-500">Create patient records, search by name/ID/phone, or activate/deactivate access.</p>
+          </div>
+        </div>
+
+        <form onsubmit="adminCreatePatientForm(event)" class="p-4 rounded-xl bg-[#f6f9f9] border border-slate-200 grid grid-cols-1 sm:grid-cols-5 gap-3 text-xs">
+          <input id="adm-pat-name" type="text" required placeholder="Full Name *" class="px-3 py-2 rounded-lg border border-slate-300" />
+          <input id="adm-pat-email" type="email" placeholder="Email (optional)" class="px-3 py-2 rounded-lg border border-slate-300" />
+          <input id="adm-pat-phone" type="text" required placeholder="Phone *" class="px-3 py-2 rounded-lg border border-slate-300" />
+          <select id="adm-pat-gender" class="px-3 py-2 rounded-lg border border-slate-300">
+            <option value="Female">Female</option>
+            <option value="Male">Male</option>
+          </select>
+          <button type="submit" class="py-2 px-4 rounded-lg bg-[#01578c] text-white font-bold">+ Register Patient</button>
+        </form>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-500">
+                <th class="py-2">Patient #</th>
+                <th class="py-2">Name</th>
+                <th class="py-2">Email &amp; Phone</th>
+                <th class="py-2">City</th>
+                <th class="py-2">Status</th>
+                <th class="py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for p in patients %}
+              <tr class="border-b border-slate-100">
+                <td class="py-2.5 font-mono font-bold text-[#01578c]">{{ p.patient_number }}</td>
+                <td class="py-2.5 font-bold text-slate-900">{{ p.full_name }}</td>
+                <td class="py-2.5">{{ p.email or '-' }} • {{ p.phone }}</td>
+                <td class="py-2.5">{{ p.city }}</td>
+                <td class="py-2.5">
+                  <span class="px-2 py-0.5 rounded-full font-bold {% if p.is_active %}bg-emerald-50 text-emerald-700{% else %}bg-red-50 text-red-700{% endif %}">
+                    {{ 'Active' if p.is_active else 'Deactivated' }}
+                  </span>
+                </td>
+                <td class="py-2.5 text-right space-x-1">
+                  {% if p.user_id %}
+                  <button type="button" onclick="toggleUserActive({{ p.user_id }}, {{ 'false' if p.is_active else 'true' }})"
+                    class="px-2.5 py-1 rounded-lg border border-slate-300 font-bold hover:bg-slate-100">
+                    {{ 'Deactivate' if p.is_active else 'Activate' }}
+                  </button>
+                  {% endif %}
+                  <button type="button" onclick="adminDeletePatient({{ p.id }}, '{{ p.full_name|replace("'", "") }}', '{{ p.patient_number }}')"
+                    class="px-2.5 py-1 rounded-lg bg-red-50 hover:bg-red-100 text-red-700 border border-red-200 font-bold">
+                    Delete
+                  </button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- 2. DOCTORS & STAFF MANAGEMENT -->
+      {% if section in ['doctors', 'staff'] %}
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <h2 class="text-lg font-extrabold text-slate-900">Provision New Doctor Account</h2>
+          <form onsubmit="adminCreateDoctorForm(event)" class="space-y-3 text-xs">
+            <div class="grid grid-cols-2 gap-2">
+              <input id="adm-doc-name" type="text" required placeholder="Doctor Full Name *" class="px-3 py-2 rounded-xl border border-slate-300" />
+              <input id="adm-doc-email" type="email" required placeholder="Email Address *" class="px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <input id="adm-doc-phone" type="text" required placeholder="Phone *" class="px-3 py-2 rounded-xl border border-slate-300" />
+              <input id="adm-doc-pwd" type="password" required minlength="8" placeholder="Initial Password *" class="px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <input id="adm-doc-spec" type="text" required value="General & Cosmetic Dentistry" class="px-3 py-2 rounded-xl border border-slate-300" />
+              <input id="adm-doc-fee" type="number" step="0.01" required value="1500" class="px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-[#01578c] text-white font-bold">Create Doctor Account</button>
+          </form>
+
+          <div class="pt-3 border-t border-slate-100 space-y-2">
+            {% for d in doctors %}
+            <div class="p-3 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+              <div>
+                <span class="font-mono font-bold text-[#01578c]">{{ d.doctor_code }}</span>
+                <strong class="ml-1 text-slate-900">{{ d.full_name }}</strong>
+                <span class="block text-slate-500">{{ d.specialization }} • Fee: PKR {{ "{:,.0f}".format(d.consultation_fee) }}</span>
+              </div>
+              <button type="button" onclick="toggleUserActive({{ d.user_id }}, {{ 'false' if d.is_active else 'true' }})"
+                class="px-2.5 py-1 rounded-lg border border-slate-300 font-bold">
+                {{ 'Deactivate' if d.is_active else 'Activate' }}
+              </button>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <h2 class="text-lg font-extrabold text-slate-900">Provision Administrative Staff</h2>
+          <form onsubmit="adminCreateStaffForm(event)" class="space-y-3 text-xs">
+            <div class="grid grid-cols-2 gap-2">
+              <input id="adm-stf-name" type="text" required placeholder="Staff Full Name *" class="px-3 py-2 rounded-xl border border-slate-300" />
+              <input id="adm-stf-email" type="email" required placeholder="Staff Email *" class="px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div class="grid grid-cols-2 gap-2">
+              <input id="adm-stf-phone" type="text" required placeholder="Phone *" class="px-3 py-2 rounded-xl border border-slate-300" />
+              <input id="adm-stf-pwd" type="password" required minlength="8" placeholder="Password *" class="px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <label class="flex items-center gap-2">
+              <input id="adm-stf-clinical" type="checkbox" class="h-4 w-4 rounded" />
+              <span>Grant explicit permission to view patient clinical details</span>
+            </label>
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-slate-900 text-white font-bold">Create Staff Account</button>
+          </form>
+
+          <div class="pt-3 border-t border-slate-100 space-y-2">
+            {% for s in staff_members %}
+            <div class="p-3 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+              <div>
+                <span class="font-mono font-bold text-[#01578c]">{{ s.staff_code }}</span>
+                <strong class="ml-1 text-slate-900">{{ s.full_name }}</strong>
+                <span class="block text-slate-500">{{ s.designation }} • Clinical View: {{ 'Yes' if s.can_view_clinical_details else 'No' }}</span>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- 3. APPOINTMENTS & CALENDAR MANAGEMENT -->
+      {% if section in ['appointments'] %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <h2 class="text-lg font-extrabold text-slate-900">Clinic Appointments &amp; Scheduling</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-500">
+                <th class="py-2">Apt #</th>
+                <th class="py-2">Date &amp; Slot</th>
+                <th class="py-2">Patient</th>
+                <th class="py-2">Doctor</th>
+                <th class="py-2">Service</th>
+                <th class="py-2">Status</th>
+                <th class="py-2 text-right">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for a in appointments %}
+              <tr class="border-b border-slate-100">
+                <td class="py-2.5 font-mono font-bold text-[#01578c]">{{ a.appointment_number }}</td>
+                <td class="py-2.5">{{ a.appointment_date.isoformat() }} • {{ a.start_time.strftime('%H:%M') }}</td>
+                <td class="py-2.5 font-bold">{{ a.patient.full_name if a.patient else '' }}</td>
+                <td class="py-2.5">{{ a.doctor.full_name if a.doctor else '' }}</td>
+                <td class="py-2.5">{{ a.service.name if a.service else 'Consultation' }}</td>
+                <td class="py-2.5"><span class="px-2 py-0.5 rounded-full bg-sky-50 text-[#01578c] font-bold">{{ a.status }}</span></td>
+                <td class="py-2.5 text-right space-x-1">
+                  <button type="button" onclick="adminSetAptStatus({{ a.id }}, 'Confirmed')" class="px-2 py-1 rounded bg-sky-100 text-[#01578c] font-bold">Confirm</button>
+                  <button type="button" onclick="adminSetAptStatus({{ a.id }}, 'Completed')" class="px-2 py-1 rounded bg-emerald-100 text-emerald-800 font-bold">Complete</button>
+                  <button type="button" onclick="adminSetAptStatus({{ a.id }}, 'Cancelled')" class="px-2 py-1 rounded bg-red-100 text-red-700 font-bold">Cancel</button>
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- 4. SERVICES & PRICING CATALOG -->
+      {% if section in ['services'] %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-lg font-extrabold text-slate-900">Dental Procedures &amp; PKR Fee Schedule</h2>
+            <p class="text-xs text-slate-500">Add new procedures or click <strong>Edit Procedure</strong> on any card below to update its name, price, category, or description.</p>
+          </div>
+        </div>
+
+        <!-- Add New Procedure Form -->
+        <form onsubmit="adminCreateServiceForm(event)" class="p-4 rounded-xl bg-[#f6f9f9] border border-slate-200 grid grid-cols-1 sm:grid-cols-6 gap-3 text-xs">
+          <input id="srv-code" type="text" required placeholder="Code (SRV-013)" class="px-3 py-2 rounded-lg border border-slate-300" />
+          <input id="srv-name" type="text" required placeholder="Procedure Name *" class="px-3 py-2 rounded-lg border border-slate-300" />
+          <input id="srv-cat" type="text" required placeholder="Category *" class="px-3 py-2 rounded-lg border border-slate-300" />
+          <input id="srv-price" type="number" step="0.01" required placeholder="Price (PKR) *" class="px-3 py-2 rounded-lg border border-slate-300" />
+          <input id="srv-desc" type="text" required placeholder="Short Description *" class="px-3 py-2 rounded-lg border border-slate-300" />
+          <button type="submit" class="py-2 px-4 rounded-lg bg-[#01578c] text-white font-bold">+ Add Procedure</button>
+        </form>
+
+        <!-- Edit Existing Procedure Panel (Appears when clicking Edit Procedure) -->
+        <div id="edit-service-panel" class="hidden p-5 rounded-2xl bg-sky-50/80 border-2 border-[#01578c] space-y-3 text-xs">
+          <div class="flex items-center justify-between">
+            <h3 class="text-sm font-extrabold text-[#01578c]">✏️ Edit / Update Dental Procedure Details</h3>
+            <button type="button" onclick="closeEditServiceModal()" class="text-slate-500 hover:text-slate-900 font-bold">✕ Cancel</button>
+          </div>
+          <form onsubmit="adminUpdateServiceForm(event)" class="space-y-3">
+            <input id="edit-srv-id" type="hidden" />
+            <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+              <div>
+                <label for="edit-srv-name" class="block font-bold text-slate-700 mb-1">Procedure Name *</label>
+                <input id="edit-srv-name" type="text" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white font-semibold" />
+              </div>
+              <div>
+                <label for="edit-srv-cat" class="block font-bold text-slate-700 mb-1">Category *</label>
+                <input id="edit-srv-cat" type="text" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white" />
+              </div>
+              <div>
+                <label for="edit-srv-price" class="block font-bold text-slate-700 mb-1">Fee / Price (PKR) *</label>
+                <input id="edit-srv-price" type="number" step="0.01" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white font-bold text-[#01578c]" />
+              </div>
+              <div>
+                <label for="edit-srv-duration" class="block font-bold text-slate-700 mb-1">Duration (Minutes)</label>
+                <input id="edit-srv-duration" type="number" min="10" max="240" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white" />
+              </div>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div>
+                <label for="edit-srv-short" class="block font-bold text-slate-700 mb-1">Short Description *</label>
+                <input id="edit-srv-short" type="text" required class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white" />
+              </div>
+              <div>
+                <label for="edit-srv-detail" class="block font-bold text-slate-700 mb-1">Detailed Clinical Description</label>
+                <input id="edit-srv-detail" type="text" class="w-full px-3 py-2 rounded-lg border border-slate-300 bg-white" />
+              </div>
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <label class="flex items-center gap-2 font-semibold text-slate-700 cursor-pointer">
+                <input id="edit-srv-pub" type="checkbox" checked class="h-4 w-4 rounded text-[#01578c]" />
+                <span>Published on Public Website &amp; Available for Booking</span>
+              </label>
+              <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#01578c] hover:bg-[#013f66] text-white font-bold">
+                Save Procedure Changes
+              </button>
+            </div>
+          </form>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {% for s in services %}
+          <div class="p-4 rounded-xl border border-slate-200 text-xs flex flex-col justify-between bg-white hover:border-[#01578c]/40 transition">
+            <div>
+              <div class="flex items-center justify-between">
+                <span><span class="font-mono font-bold text-[#01578c]">{{ s.code }}</span> • <span class="text-slate-500">{{ s.category }}</span></span>
+                <span class="px-2 py-0.5 rounded-full text-[11px] font-bold {% if s.is_published %}bg-emerald-50 text-emerald-700{% else %}bg-slate-100 text-slate-600{% endif %}">
+                  {{ 'Published' if s.is_published else 'Draft' }}
+                </span>
+              </div>
+              <h3 class="font-bold text-sm text-slate-900 mt-1.5">{{ s.name }}</h3>
+              <p class="text-slate-600 mt-1">{{ s.short_description }}</p>
+            </div>
+            <div class="mt-3 pt-2.5 border-t border-slate-100 flex justify-between items-center">
+              <strong class="text-sm text-slate-900">PKR {{ "{:,.2f}".format(s.price) }}</strong>
+              <button type="button"
+                data-id="{{ s.id }}"
+                data-name="{{ s.name }}"
+                data-category="{{ s.category }}"
+                data-price="{{ s.price }}"
+                data-duration="{{ s.duration_minutes }}"
+                data-short="{{ s.short_description }}"
+                data-detail="{{ s.detailed_description or '' }}"
+                data-pub="{{ 'true' if s.is_published else 'false' }}"
+                onclick="openEditServiceModal(this)"
+                class="px-3 py-1.5 rounded-lg bg-sky-50 hover:bg-sky-100 text-[#01578c] font-bold">
+                ✏️ Edit Procedure
+              </button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- 5. INVOICES, PAYMENTS & RECEIPTS (FINANCE) -->
+      {% if section in ['invoices', 'payments', 'receipts', 'dashboard'] %}
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <!-- Create Invoice + Record Payment Forms -->
+        <div class="lg:col-span-5 space-y-6">
+          <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3">
+            <h2 class="text-base font-extrabold text-slate-900">Issue Itemized Invoice / Estimate (PKR)</h2>
+            <form onsubmit="adminCreateInvoiceForm(event)" class="space-y-3 text-xs">
+              <div class="grid grid-cols-2 gap-2">
+                <select id="inv-patient" required class="px-3 py-2 rounded-xl border border-slate-300">
+                  {% for p in patients %}
+                  <option value="{{ p.id }}">{{ p.patient_number }} — {{ p.full_name }}</option>
+                  {% endfor %}
+                </select>
+                <select id="inv-kind" class="px-3 py-2 rounded-xl border border-slate-300">
+                  <option value="Invoice">Official Invoice</option>
+                  <option value="Estimate">Cost Estimate</option>
+                </select>
+              </div>
+              <input id="inv-desc" type="text" required placeholder="Procedure / Service Description *" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+              <div class="grid grid-cols-3 gap-2">
+                <input id="inv-qty" type="number" min="1" value="1" required placeholder="Qty" class="px-3 py-2 rounded-xl border border-slate-300" />
+                <input id="inv-price" type="number" step="0.01" required placeholder="Unit Price (PKR)" class="px-3 py-2 rounded-xl border border-slate-300" />
+                <input id="inv-discount" type="number" step="0.01" value="0" placeholder="Discount (PKR)" class="px-3 py-2 rounded-xl border border-slate-300" />
+              </div>
+              <button type="submit" class="w-full py-2.5 rounded-xl bg-[#01578c] text-white font-bold">Create Invoice</button>
+            </form>
+          </div>
+
+          <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-3">
+            <h2 class="text-base font-extrabold text-slate-900">Record Verified Payment &amp; Issue Receipt</h2>
+            <form onsubmit="adminRecordPaymentForm(event)" class="space-y-3 text-xs">
+              <select id="pay-invoice" required class="w-full px-3 py-2 rounded-xl border border-slate-300">
+                {% for inv in invoices if inv.document_kind == 'Invoice' and inv.balance_due > 0 %}
+                <option value="{{ inv.id }}">{{ inv.invoice_number }} ({{ inv.patient.full_name if inv.patient else '' }}) — Balance: PKR {{ "{:,.2f}".format(inv.balance_due) }}</option>
+                {% endfor %}
+              </select>
+              <div class="grid grid-cols-2 gap-2">
+                <input id="pay-amount" type="number" step="0.01" required placeholder="Amount Received (PKR) *" class="px-3 py-2 rounded-xl border border-slate-300" />
+                <select id="pay-method" class="px-3 py-2 rounded-xl border border-slate-300">
+                  <option value="Cash">Cash</option>
+                  <option value="BankTransfer">Bank Transfer</option>
+                  <option value="Card">Debit / Credit Card</option>
+                </select>
+              </div>
+              <input id="pay-ref" type="text" placeholder="Reference / Slip Number (optional)" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+              <button type="submit" class="w-full py-2.5 rounded-xl bg-emerald-700 text-white font-bold">Record Payment &amp; Generate Receipt</button>
+            </form>
+          </div>
+        </div>
+
+        <!-- Invoices & Receipts Ledger -->
+        <div class="lg:col-span-7 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <h2 class="text-base font-extrabold text-slate-900">Invoices, Recorded Payments &amp; Official Receipts</h2>
+          <div class="space-y-2.5">
+            {% for inv in invoices[:12] %}
+            <div class="p-3.5 rounded-xl border border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
+              <div>
+                <span class="font-mono font-bold text-[#01578c]">{{ inv.invoice_number }} ({{ inv.document_kind }})</span>
+                <strong class="ml-2 text-slate-900">{{ inv.patient.full_name if inv.patient else '' }}</strong>
+                <span class="block text-slate-500 mt-0.5">
+                  Total: PKR {{ "{:,.2f}".format(inv.total_amount) }} | Paid: PKR {{ "{:,.2f}".format(inv.amount_paid) }} | Balance: <strong>PKR {{ "{:,.2f}".format(inv.balance_due) }}</strong>
+                </span>
+              </div>
+              <div class="flex items-center gap-2">
+                <span class="px-2 py-0.5 rounded-full font-bold bg-slate-100">{{ inv.status }}</span>
+                <a href="/api/v1/invoices/{{ inv.id }}/pdf" target="_blank" class="px-2.5 py-1 rounded bg-[#01578c] text-white font-bold">Invoice PDF</a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+
+          <h3 class="text-sm font-bold text-slate-900 pt-3 border-t border-slate-100">Issued Payment Receipts</h3>
+          <div class="space-y-2">
+            {% for r in receipts[:10] %}
+            <div class="p-3 rounded-xl bg-emerald-50/50 border border-emerald-200 flex items-center justify-between text-xs">
+              <div>
+                <span class="font-mono font-bold text-emerald-800">{{ r.receipt_number }}</span>
+                <span class="ml-2 font-bold text-slate-900">PKR {{ "{:,.2f}".format(r.amount_received) }} ({{ r.payment_method }})</span>
+                <span class="text-slate-500 ml-2">• {{ r.patient.full_name if r.patient else '' }}</span>
+              </div>
+              <a href="/api/v1/receipts/{{ r.id }}/pdf" target="_blank" class="px-2.5 py-1 rounded bg-emerald-700 text-white font-bold">Receipt PDF</a>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- 6. REVIEW MODERATION -->
+      {% if section in ['reviews', 'dashboard'] %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <h2 class="text-lg font-extrabold text-slate-900">Patient Review &amp; Testimonial Moderation</h2>
+        <div class="space-y-3">
+          {% for r in reviews %}
+          <div class="p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs">
+            <div>
+              <span class="px-2 py-0.5 rounded-full font-bold bg-sky-50 text-[#01578c]">{{ r.status }}</span>
+              <span class="text-amber-500 ml-2">{% for _ in range(r.rating) %}★{% endfor %}</span>
+              <strong class="ml-2 text-slate-900">{{ r.reviewer_display_name }}</strong>
+              <p class="text-slate-600 mt-1">“{{ r.comment }}”</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <button type="button" onclick="moderateReview({{ r.id }}, 'Approved')" class="px-3 py-1.5 rounded-lg bg-emerald-600 text-white font-bold">Approve</button>
+              <button type="button" onclick="moderateReview({{ r.id }}, 'Rejected')" class="px-3 py-1.5 rounded-lg bg-red-600 text-white font-bold">Reject</button>
+              <button type="button" onclick="moderateReview({{ r.id }}, 'Hidden')" class="px-3 py-1.5 rounded-lg bg-slate-600 text-white font-bold">Hide</button>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- 7. SECURITY AUDIT LOGS -->
+      {% if section in ['audit-logs'] %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <h2 class="text-lg font-extrabold text-slate-900">Immutable Security &amp; Clinical Audit Trail</h2>
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr class="border-b border-slate-200 text-slate-500">
+                <th class="py-2">Timestamp</th>
+                <th class="py-2">Actor</th>
+                <th class="py-2">Role</th>
+                <th class="py-2">Action</th>
+                <th class="py-2">Resource</th>
+                <th class="py-2">Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for l in audit_logs %}
+              <tr class="border-b border-slate-100">
+                <td class="py-2 font-mono text-[11px] text-slate-500">{{ l.created_at.strftime('%Y-%m-%d %H:%M:%S') if l.created_at else '' }}</td>
+                <td class="py-2 font-semibold">{{ l.actor_email or 'anonymous' }}</td>
+                <td class="py-2">{{ l.actor_role or '-' }}</td>
+                <td class="py-2 font-mono font-bold text-[#01578c]">{{ l.action }}</td>
+                <td class="py-2">{{ l.resource_type }} #{{ l.resource_id or '-' }}</td>
+                <td class="py-2 text-slate-500 truncate max-w-xs">{{ l.details_json or '' }}</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- 8. CLINIC SETTINGS -->
+      {% if section in ['settings'] %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <h2 class="text-lg font-extrabold text-slate-900">Configure Rumi Dental Care Operational Settings</h2>
+        <form onsubmit="saveClinicSettingsForm(event)" class="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Clinic Name</label>
+            <input id="set-name" type="text" required value="{{ clinic.clinic_name }}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Lead Dentist Name</label>
+            <input id="set-dentist" type="text" required value="{{ clinic.lead_dentist_name }}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Primary Phone / WhatsApp</label>
+            <input id="set-phone" type="text" required value="{{ clinic.phone_primary }}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+          </div>
+          <div>
+            <label class="block font-bold text-slate-700 mb-1">Opening Hours Text</label>
+            <input id="set-hours" type="text" required value="{{ clinic.opening_hours_time }}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+          </div>
+          <div class="sm:col-span-2">
+            <label class="block font-bold text-slate-700 mb-1">Clinic Address</label>
+            <input id="set-addr" type="text" required value="{{ clinic.address_line }}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+          </div>
+          <div class="sm:col-span-2">
+            <button type="submit" class="px-6 py-2.5 rounded-xl bg-[#01578c] text-white font-bold">Save Operational Settings</button>
+          </div>
+        </form>
+      </section>
+      {% endif %}
+    </main>
+  </div>
+
+  <script src="/static/js/rumi.js"></script>
+  <script>
+    if (document.getElementById('adminFinanceChart')) {
+      new Chart(document.getElementById('adminFinanceChart'), {
+        type: 'bar',
+        data: {
+          labels: ['Recorded Revenue (PKR)', 'Outstanding Receivables (PKR)'],
+          datasets: [{
+            label: 'PKR',
+            data: [{{ total_recorded_revenue }}, {{ outstanding_balance }}],
+            backgroundColor: ['#059669', '#d97706'],
+            borderRadius: 8
+          }]
+        },
+        options: { responsive: true, plugins: { legend: { display: false } } }
+      });
+    }
+    if (document.getElementById('adminAptChart')) {
+      new Chart(document.getElementById('adminAptChart'), {
+        type: 'doughnut',
+        data: {
+          labels: ['Confirmed / Active', 'Completed', 'Cancelled'],
+          datasets: [{
+            data: [
+              {{ appointments|selectattr('status', 'equalto', 'Confirmed')|list|length }},
+              {{ appointments|selectattr('status', 'equalto', 'Completed')|list|length }},
+              {{ appointments|selectattr('status', 'equalto', 'Cancelled')|list|length }}
+            ],
+            backgroundColor: ['#01578c', '#10b981', '#ef4444']
+          }]
+        }
+      });
+    }
+
+    async function adminCreatePatientForm(e) {
+      e.preventDefault();
+      try {
+        await rumiApi('/api/v1/patients', {
+          method: 'POST',
+          body: JSON.stringify({
+            full_name: document.getElementById('adm-pat-name').value.trim(),
+            email: document.getElementById('adm-pat-email').value.trim() || null,
+            phone: document.getElementById('adm-pat-phone').value.trim(),
+            gender: document.getElementById('adm-pat-gender').value
+          })
+        });
+        showToast('Patient created.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function toggleUserActive(userId, active) {
+      try {
+        await rumiApi(`/api/v1/admin/users/${userId}/status?is_active=${active}`, { method: 'PATCH' });
+        showToast('Account status updated.');
+        setTimeout(() => window.location.reload(), 500);
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function adminDeletePatient(patientId, fullName, patientNumber) {
+      if (!confirm(`Are you sure you want to permanently delete patient ${fullName} (${patientNumber}) and their records?`)) {
+        return;
+      }
+      try {
+        const res = await rumiApi(`/api/v1/patients/${patientId}`, { method: 'DELETE' });
+        showToast(res.message || 'Patient deleted.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function adminCreateDoctorForm(e) {
+      e.preventDefault();
+      try {
+        await rumiApi('/api/v1/doctors', {
+          method: 'POST',
+          body: JSON.stringify({
+            full_name: document.getElementById('adm-doc-name').value.trim(),
+            email: document.getElementById('adm-doc-email').value.trim(),
+            phone: document.getElementById('adm-doc-phone').value.trim(),
+            password: document.getElementById('adm-doc-pwd').value,
+            specialization: document.getElementById('adm-doc-spec').value.trim(),
+            consultation_fee: parseFloat(document.getElementById('adm-doc-fee').value || '1500')
+          })
+        });
+        showToast('Doctor account created.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function adminCreateStaffForm(e) {
+      e.preventDefault();
+      try {
+        await rumiApi('/api/v1/admin/staff', {
+          method: 'POST',
+          body: JSON.stringify({
+            full_name: document.getElementById('adm-stf-name').value.trim(),
+            email: document.getElementById('adm-stf-email').value.trim(),
+            phone: document.getElementById('adm-stf-phone').value.trim(),
+            password: document.getElementById('adm-stf-pwd').value,
+            can_view_clinical_details: document.getElementById('adm-stf-clinical').checked
+          })
+        });
+        showToast('Staff account created.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function adminSetAptStatus(aptId, st) {
+      try {
+        await rumiApi(`/api/v1/appointments/${aptId}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: st })
+        });
+        showToast(`Appointment marked ${st}.`);
+        setTimeout(() => window.location.reload(), 500);
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function adminCreateServiceForm(e) {
+      e.preventDefault();
+      try {
+        await rumiApi('/api/v1/services', {
+          method: 'POST',
+          body: JSON.stringify({
+            code: document.getElementById('srv-code').value.trim(),
+            name: document.getElementById('srv-name').value.trim(),
+            category: document.getElementById('srv-cat').value.trim(),
+            price: parseFloat(document.getElementById('srv-price').value),
+            short_description: document.getElementById('srv-desc').value.trim()
+          })
+        });
+        showToast('Dental service added to catalogue.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    function openEditServiceModal(btn) {
+      const panel = document.getElementById('edit-service-panel');
+      if (!panel) return;
+      document.getElementById('edit-srv-id').value = btn.getAttribute('data-id');
+      document.getElementById('edit-srv-name').value = btn.getAttribute('data-name') || '';
+      document.getElementById('edit-srv-cat').value = btn.getAttribute('data-category') || '';
+      document.getElementById('edit-srv-price').value = btn.getAttribute('data-price') || '';
+      document.getElementById('edit-srv-duration').value = btn.getAttribute('data-duration') || '30';
+      document.getElementById('edit-srv-short').value = btn.getAttribute('data-short') || '';
+      document.getElementById('edit-srv-detail').value = btn.getAttribute('data-detail') || '';
+      document.getElementById('edit-srv-pub').checked = btn.getAttribute('data-pub') === 'true';
+      panel.classList.remove('hidden');
+      panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function closeEditServiceModal() {
+      const panel = document.getElementById('edit-service-panel');
+      if (panel) panel.classList.add('hidden');
+    }
+
+    async function adminUpdateServiceForm(e) {
+      e.preventDefault();
+      const srvId = document.getElementById('edit-srv-id').value;
+      if (!srvId) return;
+      try {
+        await rumiApi(`/api/v1/services/${srvId}`, {
+          method: 'PUT',
+          body: JSON.stringify({
+            name: document.getElementById('edit-srv-name').value.trim(),
+            category: document.getElementById('edit-srv-cat').value.trim(),
+            price: parseFloat(document.getElementById('edit-srv-price').value),
+            duration_minutes: parseInt(document.getElementById('edit-srv-duration').value || '30', 10),
+            short_description: document.getElementById('edit-srv-short').value.trim(),
+            detailed_description: document.getElementById('edit-srv-detail').value.trim() || null,
+            is_published: document.getElementById('edit-srv-pub').checked
+          })
+        });
+        showToast('Procedure details updated successfully.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function adminCreateInvoiceForm(e) {
+      e.preventDefault();
+      try {
+        await rumiApi('/api/v1/invoices', {
+          method: 'POST',
+          body: JSON.stringify({
+            patient_id: parseInt(document.getElementById('inv-patient').value, 10),
+            document_kind: document.getElementById('inv-kind').value,
+            discount_amount: parseFloat(document.getElementById('inv-discount').value || '0'),
+            items: [{
+              description: document.getElementById('inv-desc').value.trim(),
+              quantity: parseInt(document.getElementById('inv-qty').value, 10),
+              unit_price: parseFloat(document.getElementById('inv-price').value)
+            }]
+          })
+        });
+        showToast('Invoice created.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function adminRecordPaymentForm(e) {
+      e.preventDefault();
+      try {
+        await rumiApi('/api/v1/payments', {
+          method: 'POST',
+          body: JSON.stringify({
+            invoice_id: parseInt(document.getElementById('pay-invoice').value, 10),
+            amount: parseFloat(document.getElementById('pay-amount').value),
+            payment_method: document.getElementById('pay-method').value,
+            reference_number: document.getElementById('pay-ref').value.trim() || null
+          })
+        });
+        showToast('Payment recorded & official receipt generated!');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function moderateReview(revId, st) {
+      try {
+        await rumiApi(`/api/v1/reviews/${revId}/moderate`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: st, moderation_reason: `Moderated as ${st} by administrator` })
+        });
+        showToast(`Review marked as ${st}.`);
+        setTimeout(() => window.location.reload(), 500);
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+
+    async function saveClinicSettingsForm(e) {
+      e.preventDefault();
+      try {
+        await rumiApi('/api/v1/admin/settings', {
+          method: 'PUT',
+          body: JSON.stringify({
+            clinic_name: document.getElementById('set-name').value.trim(),
+            lead_dentist_name: document.getElementById('set-dentist').value.trim(),
+            phone_primary: document.getElementById('set-phone').value.trim(),
+            opening_hours_time: document.getElementById('set-hours').value.trim(),
+            address_line: document.getElementById('set-addr').value.trim()
+          })
+        });
+        showToast('Clinic settings saved.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) { showToast(err.message, 'error'); }
+    }
+  </script>
+</body>
+</html>

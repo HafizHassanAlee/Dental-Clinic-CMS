@@ -1,0 +1,919 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ page_title }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/rumi.css" />
+  <script>window.RUMI_CSRF_TOKEN = "{{ csrf_token or '' }}";</script>
+</head>
+<body class="min-h-screen bg-[#f6f9f9] text-slate-800 flex flex-col lg:flex-row">
+  <!-- Patient Portal Sidebar -->
+  <aside class="w-full lg:w-64 bg-[#01578c] text-white shrink-0 flex flex-col justify-between">
+    <div>
+      <div class="p-5 border-b border-sky-800 flex items-center justify-between">
+        <a href="/" class="flex items-center gap-2.5">
+          <div class="bg-white p-1.5 rounded-lg">
+            <img src="/static/images/rumi-logo.png" alt="Rumi Dental Care" class="h-7 w-auto" />
+          </div>
+          <div>
+            <span class="block font-extrabold text-sm leading-none">RUMI DENTAL</span>
+            <span class="block text-[11px] text-[#29d8db] font-semibold mt-0.5">Patient Portal</span>
+          </div>
+        </a>
+      </div>
+
+      <div class="px-5 py-3 bg-sky-950/40 border-b border-sky-800 text-xs">
+        <span class="text-sky-300 block">Authenticated Patient:</span>
+        <strong class="text-white text-sm block truncate">{{ patient.full_name }}</strong>
+        <span class="inline-block mt-1 px-2 py-0.5 rounded bg-[#29d8db]/20 text-[#29d8db] font-mono text-[11px]">
+          {{ patient.patient_number }}
+        </span>
+      </div>
+
+      <nav class="p-3 space-y-1 text-xs sm:text-sm font-medium flex lg:block overflow-x-auto" aria-label="Patient Portal Navigation">
+        {% set nav_items = [
+          ('dashboard', 'Dashboard', '/patient/dashboard'),
+          ('appointments', 'Appointments', '/patient/appointments'),
+          ('medical-history', 'Medical & Dental History', '/patient/medical-history'),
+          ('dental-chart', 'FDI Dental Chart', '/patient/dental-chart'),
+          ('treatments', 'Treatments & Plans', '/patient/treatments'),
+          ('x-rays', 'X-Rays & Imaging', '/patient/x-rays'),
+          ('documents', 'Clinical Documents', '/patient/documents'),
+          ('prescriptions', 'Prescriptions (Rx)', '/patient/prescriptions'),
+          ('billing', 'Billing & Invoices', '/patient/billing'),
+          ('receipts', 'Payment Receipts', '/patient/receipts'),
+          ('reviews', 'My Reviews', '/patient/reviews'),
+          ('profile', 'My Profile', '/patient/profile'),
+          ('settings', 'Security Settings', '/patient/settings')
+        ] %}
+        {% for key, label, href in nav_items %}
+        <a href="{{ href }}"
+          class="block whitespace-nowrap px-3.5 py-2.5 rounded-xl transition {% if section == key %}bg-[#29d8db] text-slate-950 font-bold{% else %}text-sky-100 hover:bg-white/10{% endif %}">
+          {{ label }}
+        </a>
+        {% endfor %}
+      </nav>
+    </div>
+
+    <div class="hidden lg:block p-4 border-t border-sky-800 space-y-2 text-xs">
+      <a href="/api/v1/patients/{{ patient.id }}/treatment-summary.pdf" target="_blank"
+        class="block w-full text-center py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white font-semibold">
+        📄 Download Clinical Summary PDF
+      </a>
+      <a href="/" class="block text-center text-sky-200 hover:text-white py-1">← Public Website</a>
+      <button type="button" onclick="handleLogout()" class="w-full py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-100 font-semibold">
+        Sign Out
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Workspace -->
+  <div class="flex-1 flex flex-col min-w-0">
+    <!-- Top Header -->
+    <header class="bg-white border-b border-slate-200 px-6 py-4 flex flex-wrap items-center justify-between gap-4">
+      <div>
+        <h1 class="text-xl font-extrabold text-slate-900">
+          Welcome, {{ patient.full_name }}
+        </h1>
+        <p class="text-xs text-slate-500">
+          Patient ID: <strong>{{ patient.patient_number }}</strong> • Lead Dentist: {{ clinic.lead_dentist_name }} • Currency: PKR
+        </p>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/patient/appointments" class="px-4 py-2 rounded-xl bg-[#01578c] text-white text-xs font-bold hover:bg-[#013f66]">
+          + Request Appointment
+        </a>
+        <a href="/api/v1/patients/{{ patient.id }}/treatment-summary.pdf" target="_blank"
+          class="px-3.5 py-2 rounded-xl border border-slate-300 text-xs font-bold text-slate-700 hover:bg-slate-50">
+          Summary PDF
+        </a>
+        <button type="button" onclick="handleLogout()" class="lg:hidden px-3 py-2 rounded-xl border border-slate-300 text-xs font-bold">
+          Sign Out
+        </button>
+      </div>
+    </header>
+
+    <main class="p-6 space-y-8 max-w-7xl w-full mx-auto">
+      {% if not current_user.is_email_verified %}
+      <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4 text-xs">
+        <div>
+          <strong class="text-amber-950 font-bold block text-sm">⚠️ Verify Your Patient Account (Email or WhatsApp)</strong>
+          <span class="text-amber-800">Receive a 6-digit code from <code>muhammadhafizhassan228@gmail.com</code> or verify directly via WhatsApp ({{ current_user.phone or clinic.phone_primary }}).</span>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button type="button" onclick="portalRequestOtp('email')" class="px-3 py-2 rounded-xl bg-[#01578c] text-white font-bold">
+            📧 Send Email Code
+          </button>
+          <button type="button" onclick="portalRequestOtp('whatsapp')" class="px-3 py-2 rounded-xl bg-green-600 text-white font-bold">
+            💬 Verify on WhatsApp
+          </button>
+          <input id="portal-otp-code" type="text" maxlength="6" placeholder="6-Digit Code" class="w-28 px-3 py-2 rounded-xl border border-amber-300 font-bold text-center" />
+          <button type="button" onclick="portalVerifyOtp()" class="px-3 py-2 rounded-xl bg-slate-900 text-white font-bold">
+            Verify Code
+          </button>
+        </div>
+      </div>
+      {% endif %}
+
+      <!-- KPI Summary Cards (Always visible on dashboard) -->
+      {% if section == 'dashboard' %}
+      <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-bold uppercase text-slate-400">Appointments</span>
+          <p class="text-2xl font-extrabold text-[#01578c] mt-1">{{ appointments|length }}</p>
+          <a href="/patient/appointments" class="text-xs font-semibold text-[#01578c] hover:underline mt-2 inline-block">Manage Visits →</a>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-bold uppercase text-slate-400">Treatments &amp; Plans</span>
+          <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ treatments|length }} / {{ plans|length }}</p>
+          <a href="/patient/treatments" class="text-xs font-semibold text-[#01578c] hover:underline mt-2 inline-block">View Procedures →</a>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-bold uppercase text-slate-400">X-Rays &amp; Documents</span>
+          <p class="text-2xl font-extrabold text-slate-900 mt-1">{{ documents|length }}</p>
+          <a href="/patient/x-rays" class="text-xs font-semibold text-[#01578c] hover:underline mt-2 inline-block">Open Imaging →</a>
+        </div>
+        <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+          <span class="text-xs font-bold uppercase text-slate-400">Outstanding Balance</span>
+          <p class="text-2xl font-extrabold {% if outstanding_balance > 0 %}text-amber-600{% else %}text-emerald-600{% endif %} mt-1">
+            PKR {{ "{:,.2f}".format(outstanding_balance) }}
+          </p>
+          <a href="/patient/billing" class="text-xs font-semibold text-[#01578c] hover:underline mt-2 inline-block">Invoices &amp; Receipts →</a>
+        </div>
+      </div>
+
+      <!-- Notifications & Reminders -->
+      {% if notifications %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="text-base font-bold text-slate-900">Recent Portal Notifications ({{ unread_notifications_count }} unread)</h2>
+          <button type="button" onclick="markAllNotificationsRead()" class="text-xs font-bold text-[#01578c] hover:underline">
+            Mark All Read
+          </button>
+        </div>
+        <div class="space-y-2.5">
+          {% for n in notifications[:4] %}
+          <div class="p-3.5 rounded-xl {% if not n.is_read %}bg-sky-50 border border-sky-200{% else %}bg-slate-50 border border-slate-200{% endif %} flex items-start justify-between gap-4">
+            <div>
+              <span class="text-xs font-bold text-[#01578c]">[{{ n.notification_type }}] {{ n.title }}</span>
+              <p class="text-xs text-slate-600 mt-0.5">{{ n.message }}</p>
+            </div>
+            <span class="text-[11px] text-slate-400 whitespace-nowrap">{{ n.created_at.strftime('%Y-%m-%d') if n.created_at else '' }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+      {% endif %}
+
+      <!-- APPOINTMENTS SECTION -->
+      {% if section in ['dashboard', 'appointments'] %}
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <h2 class="text-lg font-extrabold text-slate-900">Book a New Appointment</h2>
+          <p class="text-xs text-slate-500">
+            Clinic Hours: {{ clinic.opening_hours_days }} {{ clinic.opening_hours_time }} (Closed Sundays). Server validates slot conflicts automatically.
+          </p>
+          <form onsubmit="bookPatientAppointment(event)" class="space-y-3.5">
+            <div>
+              <label for="apt-doctor" class="block text-xs font-bold text-slate-700 mb-1">Select Doctor *</label>
+              <select id="apt-doctor" required onchange="refreshPatientSlots()" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm">
+                {% for d in doctors %}
+                <option value="{{ d.id }}">{{ d.full_name }} ({{ d.title }})</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div>
+              <label for="apt-service" class="block text-xs font-bold text-slate-700 mb-1">Dental Service *</label>
+              <select id="apt-service" required onchange="refreshPatientSlots()" class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm">
+                {% for s in services %}
+                <option value="{{ s.id }}">{{ s.name }} — PKR {{ "{:,.0f}".format(s.price) }} ({{ s.duration_minutes }}m)</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="apt-date" class="block text-xs font-bold text-slate-700 mb-1">Date *</label>
+                <input id="apt-date" type="date" required min="{{ today_iso }}" value="{{ today_iso }}" onchange="refreshPatientSlots()"
+                  class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+              </div>
+              <div>
+                <label for="apt-time" class="block text-xs font-bold text-slate-700 mb-1">Available Time *</label>
+                <select id="apt-time" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm">
+                  <option value="16:00">16:00 (04:00 PM)</option>
+                  <option value="16:30">16:30 (04:30 PM)</option>
+                  <option value="17:00">17:00 (05:00 PM)</option>
+                  <option value="17:30">17:30 (05:30 PM)</option>
+                  <option value="18:00">18:00 (06:00 PM)</option>
+                  <option value="18:30">18:30 (06:30 PM)</option>
+                  <option value="19:00">19:00 (07:00 PM)</option>
+                  <option value="19:30">19:30 (07:30 PM)</option>
+                  <option value="20:00">20:00 (08:00 PM)</option>
+                  <option value="20:30">20:30 (08:30 PM)</option>
+                  <option value="21:00">21:00 (09:00 PM)</option>
+                </select>
+              </div>
+            </div>
+            <div>
+              <label for="apt-reason" class="block text-xs font-bold text-slate-700 mb-1">Reason for Visiting / Symptoms *</label>
+              <textarea id="apt-reason" rows="2" required minlength="3" placeholder="Describe your dental concern or procedure request..."
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"></textarea>
+            </div>
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-[#01578c] text-white font-bold text-sm hover:bg-[#013f66]">
+              Confirm Appointment Request
+            </button>
+          </form>
+        </div>
+
+        <div class="lg:col-span-7 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm">
+          <h2 class="text-lg font-extrabold text-slate-900 mb-4">My Appointments History</h2>
+          {% if not appointments %}
+          <p class="text-sm text-slate-500 py-8 text-center">No appointments scheduled yet.</p>
+          {% else %}
+          <div class="space-y-3">
+            {% for a in appointments %}
+            <div class="p-4 rounded-xl border border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono text-xs font-bold text-[#01578c]">{{ a.appointment_number }}</span>
+                  <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold
+                    {% if a.status == 'Completed' %}bg-emerald-50 text-emerald-700
+                    {% elif a.status == 'Cancelled' %}bg-red-50 text-red-700
+                    {% else %}bg-sky-50 text-[#01578c]{% endif %}">
+                    {{ a.status }}
+                  </span>
+                </div>
+                <p class="font-bold text-sm text-slate-900 mt-1">
+                  {{ a.service.name if a.service else 'Dental Consultation' }} with {{ a.doctor.full_name if a.doctor else clinic.lead_dentist_name }}
+                </p>
+                <p class="text-xs text-slate-600">
+                  📅 {{ a.appointment_date.isoformat() }} at {{ a.start_time.strftime('%H:%M') }} – {{ a.end_time.strftime('%H:%M') }}
+                </p>
+                <p class="text-xs text-slate-500 mt-1">Reason: {{ a.reason_for_visit }}</p>
+              </div>
+              {% if a.status in ['Requested', 'Confirmed'] %}
+              <div class="flex items-center gap-2 shrink-0">
+                <button type="button" onclick="cancelMyAppointment({{ a.id }})"
+                  class="px-3 py-1.5 rounded-lg border border-red-200 text-red-600 text-xs font-bold hover:bg-red-50">
+                  Cancel
+                </button>
+              </div>
+              {% endif %}
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- FDI INTERACTIVE DENTAL CHART SECTION -->
+      {% if section in ['dashboard', 'dental-chart'] %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <span class="text-xs font-bold uppercase text-[#01578c]">FDI Two-Digit Tooth Numbering System</span>
+            <h2 class="text-lg font-extrabold text-slate-900">Interactive Dental Chart (Permanent &amp; Primary Dentition)</h2>
+            <p class="text-xs text-slate-500">{{ dental_chart.disclaimer }}</p>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-slate-100 text-slate-700 text-xs font-bold">Patient Read-Only View</span>
+        </div>
+
+        <!-- Legend -->
+        <div class="flex flex-wrap gap-2 text-xs">
+          <span class="px-2.5 py-1 rounded-lg border tooth-status-Sound">Sound</span>
+          <span class="px-2.5 py-1 rounded-lg border tooth-status-Caries">Caries</span>
+          <span class="px-2.5 py-1 rounded-lg border tooth-status-Filled">Filled</span>
+          <span class="px-2.5 py-1 rounded-lg border tooth-status-RootCanalTreated">Root Canal Treated</span>
+          <span class="px-2.5 py-1 rounded-lg border tooth-status-Crown">Crown</span>
+          <span class="px-2.5 py-1 rounded-lg border tooth-status-Implant">Implant</span>
+          <span class="px-2.5 py-1 rounded-lg border tooth-status-Missing">Missing</span>
+        </div>
+
+        <!-- Permanent Teeth (FDI 18-11, 21-28 & 48-41, 31-38) -->
+        <div>
+          <h3 class="text-xs font-bold uppercase text-slate-500 mb-2">Adult Permanent Dentition — Upper Arch (Q1: 18–11 | Q2: 21–28)</h3>
+          <div class="fdi-arch-grid">
+            {% for t in dental_chart.permanent_teeth[:16] %}
+            <div class="tooth-card tooth-status-{{ t.condition_status }}" title="{{ t.tooth_name }} — {{ t.condition_status }} {{ t.clinical_notes or '' }}">
+              <span class="block text-xs font-extrabold">#{{ t.tooth_fdi }}</span>
+              <span class="block text-[10px] truncate mt-0.5">{{ t.condition_status }}</span>
+            </div>
+            {% endfor %}
+          </div>
+
+          <h3 class="text-xs font-bold uppercase text-slate-500 mt-4 mb-2">Adult Permanent Dentition — Lower Arch (Q4: 48–41 | Q3: 31–38)</h3>
+          <div class="fdi-arch-grid">
+            {% for t in dental_chart.permanent_teeth[16:] %}
+            <div class="tooth-card tooth-status-{{ t.condition_status }}" title="{{ t.tooth_name }} — {{ t.condition_status }} {{ t.clinical_notes or '' }}">
+              <span class="block text-xs font-extrabold">#{{ t.tooth_fdi }}</span>
+              <span class="block text-[10px] truncate mt-0.5">{{ t.condition_status }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+
+        <!-- Primary / Deciduous Teeth (FDI 55-51, 61-65 & 85-81, 71-75) -->
+        <details class="pt-2 border-t border-slate-100">
+          <summary class="text-xs font-bold text-[#01578c] cursor-pointer">Show Primary / Pediatric Dentition (FDI Quadrants 5–8: 51–85)</summary>
+          <div class="mt-3 space-y-3">
+            <div class="fdi-primary-grid">
+              {% for t in dental_chart.primary_teeth[:10] %}
+              <div class="tooth-card tooth-status-{{ t.condition_status }}">
+                <span class="block text-xs font-extrabold">#{{ t.tooth_fdi }}</span>
+                <span class="block text-[10px] truncate">{{ t.condition_status }}</span>
+              </div>
+              {% endfor %}
+            </div>
+            <div class="fdi-primary-grid">
+              {% for t in dental_chart.primary_teeth[10:] %}
+              <div class="tooth-card tooth-status-{{ t.condition_status }}">
+                <span class="block text-xs font-extrabold">#{{ t.tooth_fdi }}</span>
+                <span class="block text-[10px] truncate">{{ t.condition_status }}</span>
+              </div>
+              {% endfor %}
+            </div>
+          </div>
+        </details>
+
+        {% if dental_chart.findings_history %}
+        <div class="pt-4 border-t border-slate-100">
+          <h3 class="text-sm font-bold text-slate-900 mb-2">Documented Tooth-Specific Clinical Findings</h3>
+          <div class="space-y-2">
+            {% for f in dental_chart.findings_history %}
+            <div class="p-3 rounded-xl bg-slate-50 border border-slate-200 text-xs flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <strong class="text-[#01578c]">FDI Tooth #{{ f.tooth_fdi }} ({{ f.condition_status }}{% if f.surfaces %} • {{ f.surfaces }}{% endif %}):</strong>
+                <span class="text-slate-700 ml-1">{{ f.finding_notes }}</span>
+                {% if f.treatment_recommended %}
+                <span class="ml-2 px-2 py-0.5 rounded bg-amber-100 text-amber-800 font-semibold">Recommended: {{ f.treatment_recommended }}</span>
+                {% endif %}
+              </div>
+              <span class="text-slate-400">{{ f.recorded_at[:10] if f.recorded_at else '' }}</span>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+      </section>
+      {% endif %}
+
+      <!-- MEDICAL & DENTAL HISTORY SECTION -->
+      {% if section in ['medical-history', 'dashboard'] %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-5">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-lg font-extrabold text-slate-900">Chronological Dental &amp; Medical History</h2>
+            <p class="text-xs text-slate-500">Clinical encounters are signed by your attending dentist. You may submit a correction request below if needed.</p>
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+          <div class="p-4 rounded-xl bg-[#f6f9f9] border border-slate-200">
+            <h3 class="font-bold text-slate-900 mb-1">Medical Background</h3>
+            <p><strong>Systemic Conditions:</strong> {{ patient.medical_history.systemic_conditions if patient.medical_history else 'None recorded' }}</p>
+            <p class="mt-1"><strong>Current Medications:</strong> {{ patient.medical_history.current_medications if patient.medical_history else 'None' }}</p>
+            <p class="mt-1"><strong>Previous Dental History:</strong> {{ patient.medical_history.previous_dental_history if patient.medical_history else 'None' }}</p>
+          </div>
+          <div class="p-4 rounded-xl bg-red-50/60 border border-red-200">
+            <h3 class="font-bold text-red-900 mb-1">Documented Allergies</h3>
+            {% if not patient.allergies %}
+            <p class="text-slate-600">No known drug or material allergies recorded.</p>
+            {% else %}
+            <ul class="space-y-1">
+              {% for al in patient.allergies %}
+              <li><strong class="text-red-700">{{ al.allergen }}</strong> ({{ al.severity }}) — {{ al.reaction or 'Documented' }}</li>
+              {% endfor %}
+            </ul>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="space-y-3">
+          {% for e in encounters %}
+          <article class="p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span class="font-mono font-bold text-[#01578c]">{{ e.encounter_number }}</span>
+                <span class="ml-2 font-bold text-slate-900">Visit Date: {{ e.visit_date.isoformat() }}</span>
+                <span class="ml-2 text-slate-500">• Attending Doctor: {{ e.doctor.full_name if e.doctor else clinic.lead_dentist_name }}</span>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 font-bold">{{ e.status }} (v{{ e.version }})</span>
+            </div>
+            <p><strong>Presenting Complaint:</strong> {{ e.presenting_complaint }}</p>
+            {% if e.examination_findings %}<p><strong>Examination Findings:</strong> {{ e.examination_findings }}</p>{% endif %}
+            {% if e.diagnosis_summary %}<p><strong>Diagnosis:</strong> <span class="text-[#01578c] font-semibold">{{ e.diagnosis_summary }}</span></p>{% endif %}
+            {% if e.treatment_performed %}<p><strong>Treatment Performed:</strong> {{ e.treatment_performed }}</p>{% endif %}
+            {% if e.follow_up_instructions %}<p><strong>Follow-Up Instructions:</strong> {{ e.follow_up_instructions }}</p>{% endif %}
+          </article>
+          {% else %}
+          <p class="text-sm text-slate-500">No clinical encounters recorded yet.</p>
+          {% endfor %}
+        </div>
+
+        <!-- Patient Correction Request Form -->
+        <form onsubmit="submitCorrectionRequest(event)" class="p-4 rounded-xl bg-slate-50 border border-slate-200 space-y-3">
+          <h3 class="text-xs font-bold uppercase text-slate-700">Submit Medical History / Record Correction Request</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <input id="corr-section" type="text" required placeholder="Section (e.g. Allergies, Phone, History)"
+              class="px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+            <input id="corr-change" type="text" required minlength="5" placeholder="Describe the requested correction for your doctor..."
+              class="sm:col-span-2 px-3 py-2 rounded-xl border border-slate-300 text-xs" />
+          </div>
+          <button type="submit" class="px-4 py-2 rounded-xl bg-slate-800 text-white text-xs font-bold hover:bg-slate-900">
+            Submit Correction Request
+          </button>
+        </form>
+      </section>
+      {% endif %}
+
+      <!-- TREATMENTS & PLANS SECTION -->
+      {% if section in ['treatments'] %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-6">
+        <h2 class="text-lg font-extrabold text-slate-900">My Dental Treatment Plans &amp; Completed Procedures</h2>
+        <div class="space-y-4">
+          {% for p in plans %}
+          <div class="p-4 rounded-xl border border-slate-200">
+            <div class="flex items-center justify-between">
+              <h3 class="font-bold text-slate-900 text-sm">{{ p.plan_number }} — {{ p.title }}</h3>
+              <span class="px-2.5 py-0.5 rounded-full bg-sky-50 text-[#01578c] text-xs font-bold">{{ p.status }} • Est. PKR {{ "{:,.2f}".format(p.total_estimated_cost) }}</span>
+            </div>
+            <p class="text-xs text-slate-600 mt-1">{{ p.clinical_summary or '' }}</p>
+            <ul class="mt-3 space-y-1 text-xs">
+              {% for item in p.items %}
+              <li class="flex justify-between py-1 border-b border-slate-100">
+                <span>{{ item.procedure_name }} {% if item.tooth_fdi %}(Tooth #{{ item.tooth_fdi }}){% endif %}</span>
+                <span class="font-semibold">{{ item.status }} — PKR {{ "{:,.2f}".format(item.estimated_cost) }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+          </div>
+          {% else %}
+          <p class="text-sm text-slate-500">No treatment plans recorded.</p>
+          {% endfor %}
+        </div>
+
+        <h3 class="text-base font-bold text-slate-900 pt-2">Completed Treatment Records</h3>
+        <div class="space-y-3">
+          {% for r in treatments %}
+          <div class="p-4 rounded-xl bg-[#f6f9f9] border border-slate-200 text-xs space-y-1">
+            <div class="flex justify-between font-bold text-slate-900">
+              <span>{{ r.record_number }}: {{ r.procedure_name }} {% if r.tooth_fdi %}(Tooth #{{ r.tooth_fdi }}){% endif %}</span>
+              <span>{{ r.performed_date.isoformat() }}</span>
+            </div>
+            <p class="text-slate-600">{{ r.clinical_description }}</p>
+            {% if r.post_op_instructions %}<p class="text-[#01578c] font-medium">Post-Op Care: {{ r.post_op_instructions }}</p>{% endif %}
+          </div>
+          {% else %}
+          <p class="text-sm text-slate-500">No completed treatments recorded yet.</p>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- X-RAYS & CLINICAL DOCUMENTS SECTION -->
+      {% if section in ['x-rays', 'documents'] %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div class="flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <h2 class="text-lg font-extrabold text-slate-900">Authorized Dental X-Rays &amp; Clinical Documents</h2>
+            <p class="text-xs text-slate-500">
+              All radiographs and documents are stored in private isolated storage and verified against your patient account.
+            </p>
+          </div>
+          <span class="px-3 py-1 rounded-full bg-sky-50 text-[#01578c] text-xs font-bold">{{ documents|length }} File(s)</span>
+        </div>
+        {% if not documents %}
+        <p class="text-sm text-slate-500 py-6 text-center">No X-rays or clinical documents have been uploaded to your file yet.</p>
+        {% else %}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+          {% for d in documents %}
+          <div class="rounded-2xl border border-slate-200 overflow-hidden bg-slate-50/50 flex flex-col justify-between shadow-sm">
+            {% if d.file_extension in ['.png', '.jpg', '.jpeg'] %}
+            <a href="/api/v1/documents/{{ d.id }}/download" target="_blank" class="block bg-slate-950 p-3 text-center group relative">
+              <img src="/api/v1/documents/{{ d.id }}/download" alt="{{ d.title }}"
+                class="max-h-56 w-auto mx-auto rounded-lg object-contain transition group-hover:scale-[1.02]" />
+              <span class="inline-block mt-2 text-[11px] text-[#29d8db] font-semibold">Click image to enlarge full resolution ↗</span>
+            </a>
+            {% endif %}
+            <div class="p-4 flex items-center justify-between gap-4 bg-white">
+              <div>
+                <span class="px-2 py-0.5 rounded bg-sky-50 text-[#01578c] text-[11px] font-bold">{{ d.document_type }}</span>
+                {% if d.tooth_fdi %}<span class="text-xs font-bold text-slate-500 ml-1">• FDI Tooth #{{ d.tooth_fdi }}</span>{% endif %}
+                <h3 class="font-bold text-sm text-slate-900 mt-1">{{ d.title }}</h3>
+                <p class="text-xs text-slate-600 mt-0.5">{{ d.clinical_description or d.original_filename }}</p>
+                <span class="text-[11px] text-slate-400 block mt-1">Uploaded {{ d.created_at.strftime('%Y-%m-%d %H:%M') if d.created_at else '' }}</span>
+              </div>
+              <div class="flex flex-col gap-1.5 shrink-0">
+                <a href="/api/v1/documents/{{ d.id }}/download" target="_blank"
+                  class="px-3.5 py-2 rounded-xl bg-[#01578c] text-white text-xs font-bold hover:bg-[#013f66] text-center">
+                  View / Download
+                </a>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </section>
+      {% endif %}
+
+      <!-- PRESCRIPTIONS SECTION -->
+      {% if section in ['prescriptions'] %}
+      <section class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <h2 class="text-lg font-extrabold text-slate-900">Authorized Clinical Prescriptions (Rx)</h2>
+        {% if not prescriptions %}
+        <p class="text-sm text-slate-500 py-6 text-center">No prescriptions issued yet.</p>
+        {% else %}
+        <div class="space-y-4">
+          {% for rx in prescriptions %}
+          <div class="p-5 rounded-xl border border-slate-200 space-y-3">
+            <div class="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <span class="font-mono font-bold text-xs text-[#01578c]">{{ rx.prescription_number }}</span>
+                <h3 class="font-bold text-sm text-slate-900">Issued on {{ rx.issue_date.isoformat() }} by {{ rx.doctor.full_name if rx.doctor else clinic.lead_dentist_name }}</h3>
+              </div>
+              <a href="/api/v1/prescriptions/{{ rx.id }}/pdf" target="_blank"
+                class="px-3.5 py-1.5 rounded-xl bg-[#01578c] text-white text-xs font-bold hover:bg-[#013f66]">
+                🖨️ Printable Rx PDF
+              </a>
+            </div>
+            {% if rx.diagnosis_notes %}<p class="text-xs text-slate-600"><strong>Indication:</strong> {{ rx.diagnosis_notes }}</p>{% endif %}
+            <div class="overflow-x-auto">
+              <table class="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr class="border-b border-slate-200 text-slate-500">
+                    <th class="py-2">Medication</th>
+                    <th class="py-2">Strength</th>
+                    <th class="py-2">Dosage &amp; Route</th>
+                    <th class="py-2">Frequency</th>
+                    <th class="py-2">Duration</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in rx.items %}
+                  <tr class="border-b border-slate-100">
+                    <td class="py-2 font-bold text-slate-900">{{ item.medication_name }}</td>
+                    <td class="py-2">{{ item.strength or '-' }}</td>
+                    <td class="py-2">{{ item.dosage }} ({{ item.route }})</td>
+                    <td class="py-2">{{ item.frequency }}</td>
+                    <td class="py-2">{{ item.duration }}</td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% endif %}
+      </section>
+      {% endif %}
+
+      <!-- BILLING, INVOICES & RECEIPTS SECTION -->
+      {% if section in ['billing', 'receipts', 'dashboard'] %}
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <h2 class="text-lg font-extrabold text-slate-900">My Itemized Invoices &amp; Estimates (PKR)</h2>
+          {% if not invoices %}
+          <p class="text-sm text-slate-500">No invoices issued yet.</p>
+          {% else %}
+          <div class="space-y-3">
+            {% for inv in invoices %}
+            <div class="p-4 rounded-xl border border-slate-200 space-y-2 text-xs">
+              <div class="flex items-center justify-between">
+                <span class="font-mono font-bold text-[#01578c]">{{ inv.invoice_number }} ({{ inv.document_kind }})</span>
+                <span class="px-2.5 py-0.5 rounded-full font-bold
+                  {% if inv.status == 'Paid' %}bg-emerald-50 text-emerald-700
+                  {% elif inv.status == 'PartiallyPaid' %}bg-amber-50 text-amber-700
+                  {% else %}bg-red-50 text-red-700{% endif %}">
+                  {{ inv.status }}
+                </span>
+              </div>
+              <div class="grid grid-cols-3 gap-2 pt-1">
+                <div><span class="text-slate-400 block">Total</span><strong>PKR {{ "{:,.2f}".format(inv.total_amount) }}</strong></div>
+                <div><span class="text-slate-400 block">Paid</span><strong class="text-emerald-700">PKR {{ "{:,.2f}".format(inv.amount_paid) }}</strong></div>
+                <div><span class="text-slate-400 block">Balance</span><strong class="text-amber-700">PKR {{ "{:,.2f}".format(inv.balance_due) }}</strong></div>
+              </div>
+              <div class="pt-2 flex justify-between items-center border-t border-slate-100">
+                <span class="text-slate-400">Issued: {{ inv.issue_date.isoformat() }}</span>
+                <a href="/api/v1/invoices/{{ inv.id }}/pdf" target="_blank" class="font-bold text-[#01578c] hover:underline">
+                  Download Invoice PDF →
+                </a>
+              </div>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <h2 class="text-lg font-extrabold text-slate-900">Official Payment Receipts (PKR)</h2>
+          <p class="text-xs text-slate-500">Receipts are generated strictly for verified recorded payments.</p>
+          {% if not receipts %}
+          <p class="text-sm text-slate-500">No recorded payment receipts yet.</p>
+          {% else %}
+          <div class="space-y-3">
+            {% for r in receipts %}
+            <div class="p-4 rounded-xl bg-emerald-50/40 border border-emerald-200 flex items-center justify-between gap-4 text-xs">
+              <div>
+                <span class="font-mono font-bold text-emerald-800">{{ r.receipt_number }}</span>
+                <p class="font-extrabold text-sm text-slate-900 mt-0.5">PKR {{ "{:,.2f}".format(r.amount_received) }} ({{ r.payment_method }})</p>
+                <span class="text-slate-500">Issued: {{ r.issued_at.strftime('%Y-%m-%d %H:%M') if r.issued_at else '' }}</span>
+              </div>
+              <a href="/api/v1/receipts/{{ r.id }}/pdf" target="_blank"
+                class="px-3.5 py-2 rounded-xl bg-emerald-700 text-white font-bold hover:bg-emerald-800 shrink-0">
+                Receipt PDF
+              </a>
+            </div>
+            {% endfor %}
+          </div>
+          {% endif %}
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- PATIENT REVIEWS SECTION -->
+      {% if section in ['reviews'] %}
+      <section class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div class="lg:col-span-5 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <h2 class="text-lg font-extrabold text-slate-900">Share Your Experience</h2>
+          <p class="text-xs text-slate-500">
+            Submitted reviews are moderated by clinic administration before public display and never expose your medical history.
+          </p>
+          <form onsubmit="submitPatientReviewForm(event)" class="space-y-3">
+            <div>
+              <label for="rev-rating" class="block text-xs font-bold text-slate-700 mb-1">Star Rating (1–5) *</label>
+              <select id="rev-rating" required class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm">
+                <option value="5">★★★★★ (5 — Excellent)</option>
+                <option value="4">★★★★☆ (4 — Very Good)</option>
+                <option value="3">★★★☆☆ (3 — Satisfactory)</option>
+                <option value="2">★★☆☆☆ (2 — Fair)</option>
+                <option value="1">★☆☆☆☆ (1 — Poor)</option>
+              </select>
+            </div>
+            <div>
+              <label for="rev-title" class="block text-xs font-bold text-slate-700 mb-1">Short Headline</label>
+              <input id="rev-title" type="text" placeholder="e.g. Gentle and hygienic dental care"
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm" />
+            </div>
+            <div>
+              <label for="rev-comment" class="block text-xs font-bold text-slate-700 mb-1">Your Review *</label>
+              <textarea id="rev-comment" rows="3" required minlength="5" placeholder="Write your feedback..."
+                class="w-full px-3 py-2 rounded-xl border border-slate-300 text-sm"></textarea>
+            </div>
+            <label class="flex items-center gap-2 text-xs text-slate-600">
+              <input id="rev-consent" type="checkbox" checked class="h-4 w-4 rounded" />
+              <span>I consent to publishing my display name and testimonial once approved.</span>
+            </label>
+            <button type="submit" class="w-full py-2.5 rounded-xl bg-[#01578c] text-white font-bold text-sm">
+              Submit Review for Moderation
+            </button>
+          </form>
+        </div>
+
+        <div class="lg:col-span-7 bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <h2 class="text-lg font-extrabold text-slate-900">My Submitted Reviews</h2>
+          {% for r in my_reviews %}
+          <div class="p-4 rounded-xl border border-slate-200 flex items-start justify-between gap-4 text-xs">
+            <div>
+              <span class="px-2 py-0.5 rounded-full font-bold bg-sky-50 text-[#01578c]">{{ r.status }}</span>
+              <span class="text-amber-500 ml-2">{% for _ in range(r.rating) %}★{% endfor %}</span>
+              <p class="font-bold text-slate-900 mt-1">{{ r.title or 'Patient Review' }}</p>
+              <p class="text-slate-600 mt-0.5">{{ r.comment }}</p>
+            </div>
+            <button type="button" onclick="deleteMyReview({{ r.id }})" class="text-red-600 font-bold hover:underline">
+              Remove
+            </button>
+          </div>
+          {% else %}
+          <p class="text-sm text-slate-500">You have not submitted any reviews yet.</p>
+          {% endfor %}
+        </div>
+      </section>
+      {% endif %}
+
+      <!-- PROFILE & SECURITY SETTINGS SECTION -->
+      {% if section in ['profile', 'settings'] %}
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <h2 class="text-lg font-extrabold text-slate-900">Update Permitted Profile Information</h2>
+          <form onsubmit="updateMyProfileForm(event)" class="space-y-3 text-xs">
+            <div>
+              <label class="block font-bold text-slate-500 mb-1">Patient Number (Immutable Identifier)</label>
+              <input type="text" disabled value="{{ patient.patient_number }}" class="w-full px-3 py-2 rounded-xl bg-slate-100 border border-slate-200" />
+            </div>
+            <div>
+              <label for="prof-name" class="block font-bold text-slate-700 mb-1">Full Name</label>
+              <input id="prof-name" type="text" required value="{{ patient.full_name }}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="prof-phone" class="block font-bold text-slate-700 mb-1">Phone Number</label>
+                <input id="prof-phone" type="text" required value="{{ patient.phone }}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+              </div>
+              <div>
+                <label for="prof-blood" class="block font-bold text-slate-700 mb-1">Blood Group</label>
+                <input id="prof-blood" type="text" value="{{ patient.blood_group or '' }}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+              </div>
+            </div>
+            <div>
+              <label for="prof-address" class="block font-bold text-slate-700 mb-1">Address</label>
+              <input id="prof-address" type="text" value="{{ patient.address or '' }}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div>
+                <label for="prof-em-name" class="block font-bold text-slate-700 mb-1">Emergency Contact Name</label>
+                <input id="prof-em-name" type="text" value="{{ patient.emergency_contact_name or '' }}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+              </div>
+              <div>
+                <label for="prof-em-phone" class="block font-bold text-slate-700 mb-1">Emergency Contact Phone</label>
+                <input id="prof-em-phone" type="text" value="{{ patient.emergency_contact_phone or '' }}" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+              </div>
+            </div>
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-[#01578c] text-white font-bold">Save Profile Changes</button>
+          </form>
+        </div>
+
+        <div class="bg-white rounded-2xl p-6 border border-slate-200 shadow-sm space-y-4">
+          <h2 class="text-lg font-extrabold text-slate-900">Change Account Password</h2>
+          <form onsubmit="changeMyPasswordForm(event)" class="space-y-3 text-xs">
+            <div>
+              <label for="pwd-current" class="block font-bold text-slate-700 mb-1">Current Password</label>
+              <input id="pwd-current" type="password" required class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div>
+              <label for="pwd-new" class="block font-bold text-slate-700 mb-1">New Password (Min 8 chars)</label>
+              <input id="pwd-new" type="password" required minlength="8" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <div>
+              <label for="pwd-confirm" class="block font-bold text-slate-700 mb-1">Confirm New Password</label>
+              <input id="pwd-confirm" type="password" required minlength="8" class="w-full px-3 py-2 rounded-xl border border-slate-300" />
+            </div>
+            <button type="submit" class="px-5 py-2.5 rounded-xl bg-slate-900 text-white font-bold">Update Password</button>
+          </form>
+        </div>
+      </section>
+      {% endif %}
+    </main>
+  </div>
+
+  <script src="/static/js/rumi.js"></script>
+  <script>
+    function refreshPatientSlots() {
+      loadAvailableTimeSlots('apt-doctor', 'apt-date', 'apt-service', 'apt-time');
+    }
+    async function bookPatientAppointment(e) {
+      e.preventDefault();
+      try {
+        await rumiApi('/api/v1/appointments', {
+          method: 'POST',
+          body: JSON.stringify({
+            doctor_id: parseInt(document.getElementById('apt-doctor').value, 10),
+            service_id: parseInt(document.getElementById('apt-service').value, 10),
+            appointment_date: document.getElementById('apt-date').value,
+            start_time: document.getElementById('apt-time').value,
+            reason_for_visit: document.getElementById('apt-reason').value.trim()
+          })
+        });
+        showToast('Appointment booked successfully!');
+        setTimeout(() => window.location.reload(), 700);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    async function cancelMyAppointment(aptId) {
+      if (!confirm('Are you sure you want to cancel this appointment?')) return;
+      try {
+        await rumiApi(`/api/v1/appointments/${aptId}/status`, {
+          method: 'PATCH',
+          body: JSON.stringify({ status: 'Cancelled', cancellation_reason: 'Cancelled by patient via portal' })
+        });
+        showToast('Appointment cancelled.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    async function submitCorrectionRequest(e) {
+      e.preventDefault();
+      try {
+        await rumiApi('/api/v1/patients/me/correction-requests', {
+          method: 'POST',
+          body: JSON.stringify({
+            section_name: document.getElementById('corr-section').value.trim(),
+            requested_change: document.getElementById('corr-change').value.trim()
+          })
+        });
+        showToast('Correction request submitted to clinical team.');
+        document.getElementById('corr-change').value = '';
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    async function submitPatientReviewForm(e) {
+      e.preventDefault();
+      try {
+        await rumiApi('/api/v1/reviews', {
+          method: 'POST',
+          body: JSON.stringify({
+            rating: parseInt(document.getElementById('rev-rating').value, 10),
+            title: document.getElementById('rev-title').value.trim() || null,
+            comment: document.getElementById('rev-comment').value.trim(),
+            consent_to_publish: document.getElementById('rev-consent').checked
+          })
+        });
+        showToast('Thank you! Your review has been submitted for moderation.');
+        setTimeout(() => window.location.reload(), 700);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    async function deleteMyReview(revId) {
+      try {
+        await rumiApi(`/api/v1/reviews/${revId}`, { method: 'DELETE' });
+        showToast('Review removed.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    async function updateMyProfileForm(e) {
+      e.preventDefault();
+      try {
+        await rumiApi('/api/v1/patients/me', {
+          method: 'PUT',
+          body: JSON.stringify({
+            full_name: document.getElementById('prof-name').value.trim(),
+            phone: document.getElementById('prof-phone').value.trim(),
+            blood_group: document.getElementById('prof-blood').value.trim() || null,
+            address: document.getElementById('prof-address').value.trim() || null,
+            emergency_contact_name: document.getElementById('prof-em-name').value.trim() || null,
+            emergency_contact_phone: document.getElementById('prof-em-phone').value.trim() || null
+          })
+        });
+        showToast('Profile updated successfully.');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    async function changeMyPasswordForm(e) {
+      e.preventDefault();
+      try {
+        const res = await rumiApi('/api/v1/auth/change-password', {
+          method: 'POST',
+          body: JSON.stringify({
+            current_password: document.getElementById('pwd-current').value,
+            new_password: document.getElementById('pwd-new').value,
+            confirm_password: document.getElementById('pwd-confirm').value
+          })
+        });
+        if (res.csrf_token) window.RUMI_CSRF_TOKEN = res.csrf_token;
+        showToast('Password updated successfully.');
+        e.target.reset();
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    async function portalRequestOtp(channel) {
+      try {
+        const res = await rumiApi('/api/v1/auth/send-verification-otp', {
+          method: 'POST',
+          body: JSON.stringify({ channel })
+        });
+        if (res.dev_otp_code) {
+          const inp = document.getElementById('portal-otp-code');
+          if (inp) inp.value = res.dev_otp_code;
+        }
+        showToast(res.delivery_message || `Verification code sent via ${channel}.`);
+        if (channel === 'whatsapp' && res.whatsapp_url) {
+          window.open(res.whatsapp_url, '_blank');
+        }
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+    async function portalVerifyOtp() {
+      const inp = document.getElementById('portal-otp-code');
+      if (!inp || !inp.value.trim()) {
+        showToast('Please enter the 6-digit verification code.', 'error');
+        return;
+      }
+      try {
+        const res = await rumiApi('/api/v1/auth/verify-otp', {
+          method: 'POST',
+          body: JSON.stringify({ otp_code: inp.value.trim() })
+        });
+        showToast(res.message || 'Account verified!');
+        setTimeout(() => window.location.reload(), 600);
+      } catch (err) {
+        showToast(err.message, 'error');
+      }
+    }
+  </script>
+</body>
+</html>

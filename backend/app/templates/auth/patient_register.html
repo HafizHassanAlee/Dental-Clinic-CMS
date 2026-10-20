@@ -1,0 +1,289 @@
+{% extends "layouts/public_base.html" %}
+{% block content %}
+<section class="py-14 bg-[#f6f9f9]">
+  <div class="max-w-2xl w-full mx-auto px-4">
+    <div class="bg-white rounded-3xl shadow-lg border border-slate-200 p-8">
+      <div class="text-center mb-6">
+        <span class="px-3 py-1 rounded-full bg-sky-50 text-[#01578c] text-xs font-bold uppercase">New Patient Registration</span>
+        <h1 class="text-2xl font-extrabold text-slate-900 mt-2">Create Your Patient Account</h1>
+        <p class="text-xs text-slate-500 mt-1">
+          Register to book appointments with {{ clinic.lead_dentist_name }} and securely access your dental records.
+        </p>
+      </div>
+
+      <div id="register-error" class="hidden mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium" role="alert"></div>
+
+      <form id="patient-register-form" class="space-y-4" onsubmit="submitPatientRegistration(event)">
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="reg-full-name" class="block text-xs font-bold text-slate-700 mb-1">Full Name *</label>
+            <input id="reg-full-name" type="text" required minlength="2" placeholder="e.g. Ayesha Tariq"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label for="reg-email" class="block text-xs font-bold text-slate-700 mb-1">Email Address *</label>
+            <input id="reg-email" type="email" required placeholder="you@example.com"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <div>
+            <label for="reg-phone" class="block text-xs font-bold text-slate-700 mb-1">Phone Number *</label>
+            <input id="reg-phone" type="tel" required placeholder="+92 300 1234567"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label for="reg-dob" class="block text-xs font-bold text-slate-700 mb-1">Date of Birth</label>
+            <input id="reg-dob" type="date"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label for="reg-gender" class="block text-xs font-bold text-slate-700 mb-1">Gender</label>
+            <select id="reg-gender" class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm">
+              <option value="">Select (Optional)</option>
+              <option value="Female">Female</option>
+              <option value="Male">Male</option>
+              <option value="Other">Other / Prefer not to say</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="reg-address" class="block text-xs font-bold text-slate-700 mb-1">Residential Address (Optional)</label>
+          <input id="reg-address" type="text" placeholder="House / Street / Block, Johar Town, Lahore"
+            class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label for="reg-password" class="block text-xs font-bold text-slate-700 mb-1">Password * (Min 8 chars, Upper, Lower, Digit)</label>
+            <input id="reg-password" type="password" required minlength="8"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+          </div>
+          <div>
+            <label for="reg-confirm-password" class="block text-xs font-bold text-slate-700 mb-1">Confirm Password *</label>
+            <input id="reg-confirm-password" type="password" required minlength="8"
+              class="w-full px-3.5 py-2.5 rounded-xl border border-slate-300 text-sm" />
+          </div>
+        </div>
+
+        <!-- Account Verification Method Selection -->
+        <div class="p-4 rounded-2xl bg-sky-50/70 border border-sky-200 space-y-2">
+          <span class="block text-xs font-extrabold text-[#01578c] uppercase tracking-wider">Account Verification Method *</span>
+          <p class="text-xs text-slate-600">Choose how you want to receive your 6-digit account verification code:</p>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <label class="flex items-start gap-2.5 p-3 rounded-xl bg-white border border-slate-200 cursor-pointer hover:border-[#01578c]">
+              <input type="radio" name="reg-verify-channel" value="email" checked class="mt-0.5 text-[#01578c]" />
+              <span class="text-xs">
+                <strong class="block text-slate-900">📧 Email Verification</strong>
+                <span class="text-slate-500">Sent from <code>muhammadhafizhassan228@gmail.com</code> to your email</span>
+              </span>
+            </label>
+            <label class="flex items-start gap-2.5 p-3 rounded-xl bg-white border border-slate-200 cursor-pointer hover:border-[#01578c]">
+              <input type="radio" name="reg-verify-channel" value="whatsapp" class="mt-0.5 text-[#01578c]" />
+              <span class="text-xs">
+                <strong class="block text-slate-900">💬 Phone / WhatsApp Verification</strong>
+                <span class="text-slate-500">Verify directly via your phone number / WhatsApp</span>
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <div class="p-3.5 rounded-xl bg-slate-50 border border-slate-200 flex items-start gap-2.5">
+          <input id="reg-consent" type="checkbox" required class="mt-1 h-4 w-4 rounded border-slate-300 text-[#01578c]" />
+          <label for="reg-consent" class="text-xs text-slate-600 leading-relaxed">
+            I accept the <a href="/privacy-policy" target="_blank" class="font-bold text-[#01578c] underline">Privacy Policy</a> and <a href="/terms-of-service" target="_blank" class="font-bold text-[#01578c] underline">Terms of Service</a>, and consent to the secure storage of my dental and medical records at Rumi Dental Care.
+          </label>
+        </div>
+
+        <button type="submit" id="reg-submit-btn"
+          class="w-full py-3.5 rounded-xl bg-[#01578c] text-white font-bold text-sm hover:bg-[#013f66] transition">
+          Create Account &amp; Send Verification Code
+        </button>
+      </form>
+
+      <!-- Step 2: OTP Verification Panel (Shown after account creation) -->
+      <div id="otp-verification-panel" class="hidden space-y-4 pt-2">
+        <div class="p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-900 space-y-1">
+          <strong class="block text-sm font-extrabold text-emerald-950">✅ Step 1 Complete — Please Verify Your Account</strong>
+          <p id="otp-delivery-msg">A 6-digit verification code has been generated for your account.</p>
+          <p class="text-[11px] text-emerald-700">Sender: <strong>muhammadhafizhassan228@gmail.com</strong> / Rumi Dental Care WhatsApp</p>
+        </div>
+
+        <!-- WhatsApp Quick Action -->
+        <div id="otp-whatsapp-box" class="hidden p-4 rounded-2xl bg-green-50 border border-green-200 flex flex-wrap items-center justify-between gap-3 text-xs">
+          <div>
+            <strong class="block text-green-900">💬 WhatsApp / Phone Verification Ready</strong>
+            <span class="text-green-700">Click the button to open WhatsApp with your verification code message:</span>
+          </div>
+          <a id="otp-whatsapp-link" href="#" target="_blank"
+            class="px-4 py-2 rounded-xl bg-green-600 hover:bg-green-700 text-white font-bold">
+            Open WhatsApp Verification →
+          </a>
+        </div>
+
+        <!-- Localhost / Demo Mode Instant OTP Helper -->
+        <div id="otp-dev-box" class="hidden p-3.5 rounded-xl bg-amber-50 border border-amber-200 text-xs text-amber-900 flex items-center justify-between gap-3">
+          <div>
+            <span class="font-bold block">Local Server Verification Code (for instant testing):</span>
+            <code id="otp-dev-code" class="text-base font-extrabold tracking-widest text-[#01578c]">------</code>
+          </div>
+          <button type="button" onclick="fillDevOtp()" class="px-3 py-1.5 rounded-lg bg-amber-200/80 hover:bg-amber-300 text-amber-950 font-bold">
+            Auto-Fill Code
+          </button>
+        </div>
+
+        <form onsubmit="submitOtpVerification(event)" class="space-y-3">
+          <div>
+            <label for="otp-input" class="block text-xs font-bold text-slate-700 mb-1">Enter 6-Digit Verification Code *</label>
+            <input id="otp-input" type="text" required maxlength="6" pattern="[0-9]{6}" placeholder="123456"
+              class="w-full px-4 py-3 rounded-xl border border-slate-300 text-center text-lg font-extrabold tracking-widest" />
+          </div>
+          <button type="submit" id="otp-verify-btn"
+            class="w-full py-3.5 rounded-xl bg-[#01578c] text-white font-bold text-sm hover:bg-[#013f66] transition">
+            Verify Account &amp; Enter Patient Portal
+          </button>
+        </form>
+
+        <div class="flex flex-wrap items-center justify-between gap-2 pt-2 text-xs">
+          <div class="space-x-2">
+            <button type="button" onclick="resendOtp('email')" class="font-bold text-[#01578c] hover:underline">
+              Resend via Email (muhammadhafizhassan228@gmail.com)
+            </button>
+            <span>•</span>
+            <button type="button" onclick="resendOtp('whatsapp')" class="font-bold text-green-700 hover:underline">
+              Send via WhatsApp
+            </button>
+          </div>
+          <a id="otp-skip-link" href="/patient/dashboard" class="text-slate-500 hover:underline">
+            Verify later in Portal →
+          </a>
+        </div>
+      </div>
+
+      <div class="mt-6 pt-4 border-t border-slate-100 text-center text-xs text-slate-600">
+        Already have a patient account?
+        <a href="/login" class="font-bold text-[#01578c] hover:underline">Sign In Here</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<script>
+let postVerifyRedirect = '/patient/dashboard';
+
+function renderVerificationStep(vInfo, redirectUrl) {
+  postVerifyRedirect = redirectUrl || '/patient/dashboard';
+  document.getElementById('patient-register-form').classList.add('hidden');
+  const panel = document.getElementById('otp-verification-panel');
+  panel.classList.remove('hidden');
+
+  if (vInfo) {
+    if (vInfo.delivery_message) {
+      document.getElementById('otp-delivery-msg').textContent = vInfo.delivery_message;
+    }
+    if (vInfo.whatsapp_url) {
+      const waBox = document.getElementById('otp-whatsapp-box');
+      const waLink = document.getElementById('otp-whatsapp-link');
+      waLink.href = vInfo.whatsapp_url;
+      waBox.classList.remove('hidden');
+    }
+    if (vInfo.dev_otp_code) {
+      document.getElementById('otp-dev-code').textContent = vInfo.dev_otp_code;
+      document.getElementById('otp-dev-box').classList.remove('hidden');
+    }
+  }
+}
+
+function fillDevOtp() {
+  const code = document.getElementById('otp-dev-code').textContent.trim();
+  if (code && code !== '------') {
+    document.getElementById('otp-input').value = code;
+  }
+}
+
+async function submitPatientRegistration(e) {
+  e.preventDefault();
+  const errBox = document.getElementById('register-error');
+  const btn = document.getElementById('reg-submit-btn');
+  errBox.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Creating account & sending verification code...';
+
+  const dobVal = document.getElementById('reg-dob').value;
+  const channelRadio = document.querySelector('input[name="reg-verify-channel"]:checked');
+  const verificationChannel = channelRadio ? channelRadio.value : 'email';
+
+  const payload = {
+    full_name: document.getElementById('reg-full-name').value.trim(),
+    email: document.getElementById('reg-email').value.trim(),
+    phone: document.getElementById('reg-phone').value.trim(),
+    date_of_birth: dobVal ? dobVal : null,
+    gender: document.getElementById('reg-gender').value || null,
+    address: document.getElementById('reg-address').value.trim() || null,
+    password: document.getElementById('reg-password').value,
+    confirm_password: document.getElementById('reg-confirm-password').value,
+    verification_channel: verificationChannel,
+    privacy_consent_accepted: document.getElementById('reg-consent').checked
+  };
+
+  try {
+    const res = await rumiApi('/api/v1/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+    if (res.csrf_token) {
+      window.RUMI_CSRF_TOKEN = res.csrf_token;
+    }
+    renderVerificationStep(res.verification_info, res.redirect_url);
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Create Account & Send Verification Code';
+  }
+}
+
+async function submitOtpVerification(e) {
+  e.preventDefault();
+  const errBox = document.getElementById('register-error');
+  const btn = document.getElementById('otp-verify-btn');
+  errBox.classList.add('hidden');
+  btn.disabled = true;
+  btn.textContent = 'Verifying code...';
+
+  try {
+    const res = await rumiApi('/api/v1/auth/verify-otp', {
+      method: 'POST',
+      body: JSON.stringify({ otp_code: document.getElementById('otp-input').value.trim() })
+    });
+    showToast(res.message || 'Account verified!');
+    setTimeout(() => {
+      window.location.href = res.redirect_url || postVerifyRedirect;
+    }, 500);
+  } catch (err) {
+    errBox.textContent = err.message;
+    errBox.classList.remove('hidden');
+    btn.disabled = false;
+    btn.textContent = 'Verify Account & Enter Patient Portal';
+  }
+}
+
+async function resendOtp(channel) {
+  try {
+    const vInfo = await rumiApi('/api/v1/auth/send-verification-otp', {
+      method: 'POST',
+      body: JSON.stringify({ channel })
+    });
+    renderVerificationStep(vInfo, postVerifyRedirect);
+    showToast(vInfo.delivery_message || `Verification code sent via ${channel}.`);
+    if (channel === 'whatsapp' && vInfo.whatsapp_url) {
+      window.open(vInfo.whatsapp_url, '_blank');
+    }
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+</script>
+{% endblock %}

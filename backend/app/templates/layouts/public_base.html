@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{{ page_title or "Rumi Dental Care — Smile Bright, Live Brighter" }}</title>
+  <meta name="description" content="Rumi Dental Care by Dr. Aisha Salman in Johar Town, Lahore. Comprehensive, hygienic, and affordable dental care: Dental Implants, Root Canals, Teeth Whitening, Braces, Scaling, and Digital X-Rays." />
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/css/rumi.css" />
+  <script>
+    window.RUMI_CSRF_TOKEN = "{{ csrf_token or '' }}";
+  </script>
+</head>
+<body class="min-h-screen flex flex-col bg-white text-slate-800 antialiased">
+  <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-50 focus:bg-[#01578c] focus:text-white focus:px-4 focus:py-2 focus:rounded-lg">
+    Skip to main content
+  </a>
+
+  <!-- Top Clinic Utility Bar -->
+  <div class="bg-[#01578c] text-white text-xs sm:text-sm py-2.5 px-4 border-b border-sky-800">
+    <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-2">
+      <div class="flex flex-wrap items-center gap-4 sm:gap-6">
+        <span class="flex items-center gap-1.5">
+          <span aria-hidden="true">📍</span>
+          <span>{{ clinic.address_line }}</span>
+        </span>
+        <span class="hidden md:flex items-center gap-1.5">
+          <span aria-hidden="true">🕒</span>
+          <span>{{ clinic.opening_hours_days }}: {{ clinic.opening_hours_time }} (Sun Closed)</span>
+        </span>
+      </div>
+      <div class="flex items-center gap-4">
+        <a href="tel:+923102468080" class="font-semibold hover:text-[#29d8db] transition">
+          📞 {{ clinic.phone_primary }}
+        </a>
+        <a href="{{ clinic.google_maps_url }}" target="_blank" rel="noopener noreferrer" class="hidden sm:inline hover:text-[#29d8db] underline">
+          Google Maps
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Navigation Header -->
+  <header class="sticky top-0 z-40 bg-white/95 backdrop-blur border-b border-slate-200 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between gap-4">
+      <a href="/" class="flex items-center gap-3 group" aria-label="Rumi Dental Care Home">
+        <img src="/static/images/rumi-logo.png" alt="Rumi Dental Care Logo" class="h-11 w-auto object-contain" />
+        <div class="hidden sm:block">
+          <span class="block text-lg font-extrabold tracking-tight text-[#01578c] leading-none">RUMI DENTAL CARE</span>
+          <span class="block text-xs text-slate-500 mt-0.5">By {{ clinic.lead_dentist_name }} • Johar Town, Lahore</span>
+        </div>
+      </a>
+
+      <nav class="hidden lg:flex items-center gap-6 text-sm font-semibold text-slate-700" aria-label="Primary Navigation">
+        <a href="/" class="hover:text-[#01578c] transition">Home</a>
+        <a href="/about" class="hover:text-[#01578c] transition">About</a>
+        <a href="/services" class="hover:text-[#01578c] transition">Procedures &amp; Services</a>
+        <a href="/reviews" class="hover:text-[#01578c] transition">Happy Stories</a>
+        <a href="/faq" class="hover:text-[#01578c] transition">FAQ</a>
+        <a href="/contact" class="hover:text-[#01578c] transition">Contact</a>
+      </nav>
+
+      <div class="flex items-center gap-2.5">
+        {% if current_user %}
+          {% if current_user.role.name == 'admin' %}
+            <a href="/admin/dashboard" class="px-4 py-2.5 rounded-xl bg-[#01578c] text-white text-sm font-semibold hover:bg-[#013f66] transition">
+              Admin Dashboard
+            </a>
+          {% elif current_user.role.name == 'doctor' %}
+            <a href="/doctor/dashboard" class="px-4 py-2.5 rounded-xl bg-[#01578c] text-white text-sm font-semibold hover:bg-[#013f66] transition">
+              Doctor Workspace
+            </a>
+          {% else %}
+            <a href="/patient/dashboard" class="px-4 py-2.5 rounded-xl bg-[#01578c] text-white text-sm font-semibold hover:bg-[#013f66] transition">
+              My Patient Portal
+            </a>
+          {% endif %}
+          <button type="button" onclick="handleLogout()" class="px-3.5 py-2.5 rounded-xl border border-slate-300 text-slate-700 text-sm font-medium hover:bg-slate-100 transition">
+            Sign Out
+          </button>
+        {% else %}
+          <a href="/login" class="px-4 py-2.5 rounded-xl border border-[#01578c] text-[#01578c] text-sm font-semibold hover:bg-sky-50 transition">
+            Patient Login
+          </a>
+          <a href="/register" class="px-4 py-2.5 rounded-xl bg-[#01578c] text-white text-sm font-semibold hover:bg-[#013f66] shadow-sm transition">
+            Book Appointment
+          </a>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Mobile Quick Navigation Bar -->
+    <div class="lg:hidden border-t border-slate-100 bg-slate-50 px-4 py-2 flex items-center gap-4 overflow-x-auto text-xs font-semibold text-slate-700">
+      <a href="/" class="whitespace-nowrap hover:text-[#01578c]">Home</a>
+      <a href="/about" class="whitespace-nowrap hover:text-[#01578c]">About</a>
+      <a href="/services" class="whitespace-nowrap hover:text-[#01578c]">Services</a>
+      <a href="/reviews" class="whitespace-nowrap hover:text-[#01578c]">Reviews</a>
+      <a href="/appointment-info" class="whitespace-nowrap hover:text-[#01578c]">Appointments</a>
+      <a href="/faq" class="whitespace-nowrap hover:text-[#01578c]">FAQ</a>
+      <a href="/contact" class="whitespace-nowrap hover:text-[#01578c]">Contact</a>
+    </div>
+  </header>
+
+  <main id="main-content" class="flex-1">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- Branded Footer -->
+  <footer class="bg-slate-900 text-slate-300 pt-14 pb-10 border-t border-slate-800 mt-16">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+      <div>
+        <div class="bg-white inline-block p-2.5 rounded-xl mb-4">
+          <img src="/static/images/rumi-logo.png" alt="Rumi Dental Care" class="h-9 w-auto" />
+        </div>
+        <p class="text-sm text-slate-400 leading-relaxed mb-4">
+          “Smile Bright, Live Brighter — Your Dental Care Destination.” Dedicated to providing top-quality, hygienic, and budget-friendly dental care in Johar Town, Lahore.
+        </p>
+        <p class="text-xs text-slate-400">Lead Dental Surgeon: <strong class="text-white">{{ clinic.lead_dentist_name }}</strong></p>
+      </div>
+
+      <div>
+        <h3 class="text-white font-bold text-sm uppercase tracking-wider mb-4">Featured Procedures</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a href="/services/dental-implants" class="hover:text-[#29d8db] transition">Dental Implants</a></li>
+          <li><a href="/services/root-canal-treatment" class="hover:text-[#29d8db] transition">Root Canal Treatment</a></li>
+          <li><a href="/services/teeth-whitening" class="hover:text-[#29d8db] transition">Teeth Whitening</a></li>
+          <li><a href="/services/braces-and-orthodontics" class="hover:text-[#29d8db] transition">Braces &amp; Orthodontics</a></li>
+          <li><a href="/services/teeth-cleaning-scaling-polishing" class="hover:text-[#29d8db] transition">Scaling &amp; Polishing</a></li>
+          <li><a href="/services/dental-x-rays" class="hover:text-[#29d8db] transition">Digital Dental X-Rays</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="text-white font-bold text-sm uppercase tracking-wider mb-4">Patient &amp; Clinic Links</h3>
+        <ul class="space-y-2 text-sm">
+          <li><a href="/login" class="hover:text-[#29d8db] transition">Patient Portal Login</a></li>
+          <li><a href="/register" class="hover:text-[#29d8db] transition">Patient Registration</a></li>
+          <li><a href="/appointment-info" class="hover:text-[#29d8db] transition">Appointment Information</a></li>
+          <li><a href="/privacy-policy" class="hover:text-[#29d8db] transition">Privacy Policy &amp; Confidentiality</a></li>
+          <li><a href="/terms-of-service" class="hover:text-[#29d8db] transition">Terms of Service</a></li>
+          <li><a href="/accessibility" class="hover:text-[#29d8db] transition">Accessibility Statement</a></li>
+          <li><a href="/staff/login" class="text-slate-400 hover:text-white transition">Authorized Staff Login</a></li>
+        </ul>
+      </div>
+
+      <div>
+        <h3 class="text-white font-bold text-sm uppercase tracking-wider mb-4">Reach Us in Lahore</h3>
+        <ul class="space-y-3 text-sm">
+          <li>
+            <span class="block text-xs text-slate-400">Clinic Address:</span>
+            <span class="text-white font-medium">{{ clinic.address_line }}</span>
+          </li>
+          <li>
+            <span class="block text-xs text-slate-400">Call / WhatsApp:</span>
+            <a href="tel:+923102468080" class="text-[#29d8db] font-bold hover:underline">{{ clinic.phone_primary }}</a>
+          </li>
+          <li>
+            <span class="block text-xs text-slate-400">Verified Opening Hours:</span>
+            <span class="text-white font-medium">{{ clinic.opening_hours_days }}: {{ clinic.opening_hours_time }}</span>
+          </li>
+          <li class="pt-2 flex items-center gap-3">
+            <a href="{{ clinic.facebook_url }}" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white">Facebook</a>
+            <a href="{{ clinic.google_maps_url }}" target="_blank" rel="noopener noreferrer" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-semibold text-white">Google Maps</a>
+          </li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-10 pt-6 border-t border-slate-800 flex flex-col sm:flex-row items-center justify-between text-xs text-slate-500 gap-4">
+      <p>Copyright © 2026 {{ clinic.lead_dentist_name }} — Powered by {{ clinic.clinic_name }}. All rights reserved.</p>
+      <p>Confidential Patient Records Protected by Role-Based Isolation</p>
+    </div>
+  </footer>
+
+  <script src="/static/js/rumi.js"></script>
+</body>
+</html>
