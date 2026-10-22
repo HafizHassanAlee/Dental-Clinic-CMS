@@ -20,10 +20,18 @@ from app.services.seed_service import seed_initial_data
 from app.web_routes import web_router
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    """Ensure upload directories and database tables exist, and seed baseline clinic data if empty."""
-    settings.private_upload_dir.mkdir(parents=True, exist_ok=True)
+_DB_INITIALIZED = False
+
+
+def ensure_Runtime_db_ready() -> None:
+    """Idempotently ensures tables and baseline clinic seed data exist (works on both Uvicorn & Vercel)."""
+    global _DB_INITIALIZED
+    if _DB_INITIALIZED:
+        return
+    try:
+        settings.private_upload_dir.mkdir(parents=True, exist_ok=True)
+    except Exception:
+        pass
     try:
         Base.metadata.create_all(bind=engine)
     except Exception:
@@ -31,10 +39,17 @@ async def lifespan(app: FastAPI):
     db = SessionLocal()
     try:
         seed_initial_data(db)
+        _DB_INITIALIZED = True
     except Exception:
         db.rollback()
     finally:
         db.close()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Ensure upload directories and database tables exist, and seed baseline clinic data if empty."""
+    ensure_Runtime_db_ready()
     yield
 
 
@@ -60,8 +75,18 @@ app.add_middleware(
 
 # Static assets (PUBLIC ONLY — private clinical uploads are never mounted here)
 STATIC_DIR = Path(__file__).resolve().parent / "static"
-STATIC_DIR.mkdir(parents=True, exist_ok=True)
+try:
+    STATIC_DIR.mkdir(parents=True, exist_ok=True)
+except OSError:
+    pass
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
+
+
+@app.middleware("http")
+async def vercel_serverless_init_middleware(request: Request, call_next):
+    if not _DB_INITIALIZED:
+        ensure_Runtime_db_ready()
+    return await call_next(request)
 
 # Include REST API v1 and Web/HTML routes
 app.include_router(api_router, prefix="/api/v1")

@@ -77,11 +77,20 @@ class Settings(BaseSettings):
 
     @property
     def private_upload_dir(self) -> Path:
+        if os.environ.get("VERCEL"):
+            tmp_dir = Path("/tmp/private_uploads")
+            tmp_dir.mkdir(parents=True, exist_ok=True)
+            return tmp_dir
         p = Path(self.UPLOAD_STORAGE_PATH)
         if not p.is_absolute():
             p = BASE_DIR / p
-        p.mkdir(parents=True, exist_ok=True)
-        return p
+        try:
+            p.mkdir(parents=True, exist_ok=True)
+            return p
+        except OSError:
+            tmp_dir = Path("/tmp/private_uploads")
+            tmp_dir.mkdir(parents=True, exist_ok=True)
+            return tmp_dir
 
 
 @lru_cache()
