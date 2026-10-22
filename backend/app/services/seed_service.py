@@ -279,35 +279,37 @@ def ensure_roles_and_permissions(db: Session) -> dict[str, Role]:
         ROLE_DOCTOR: ("Doctor / Dental Surgeon", "Authorized clinician managing encounters, charts, and treatments"),
         ROLE_ADMIN: ("Administrator", "Authorized clinic administrator managing operations, staff, and billing"),
     }
+    existing_roles = {r.name: r for r in db.query(Role).all()}
     roles_by_name: dict[str, Role] = {}
     for r_name, (disp, desc) in role_meta.items():
-        role = db.query(Role).filter(Role.name == r_name).first()
+        role = existing_roles.get(r_name)
         if not role:
             role = Role(name=r_name, display_name=disp, description=desc)
             db.add(role)
             db.flush()
         roles_by_name[r_name] = role
 
+    existing_perms = {p.code: p for p in db.query(Permission).all()}
     perms_by_code: dict[str, Permission] = {}
+    new_perms_added = False
     for code, desc in PERMISSIONS_CATALOG.items():
-        perm = db.query(Permission).filter(Permission.code == code).first()
+        perm = existing_perms.get(code)
         if not perm:
             perm = Permission(code=code, description=desc)
             db.add(perm)
-            db.flush()
+            new_perms_added = True
         perms_by_code[code] = perm
+    if new_perms_added:
+        db.flush()
 
+    existing_rp_pairs = {(rp.role_id, rp.permission_id) for rp in db.query(RolePermission).all()}
     for r_name, perm_codes in ROLE_DEFAULT_PERMISSIONS.items():
         role = roles_by_name[r_name]
         for code in perm_codes:
             perm = perms_by_code[code]
-            exists = (
-                db.query(RolePermission)
-                .filter(RolePermission.role_id == role.id, RolePermission.permission_id == perm.id)
-                .first()
-            )
-            if not exists:
+            if (role.id, perm.id) not in existing_rp_pairs:
                 db.add(RolePermission(role_id=role.id, permission_id=perm.id))
+                existing_rp_pairs.add((role.id, perm.id))
     db.flush()
     return roles_by_name
 
@@ -319,9 +321,9 @@ def ensure_clinic_settings_and_catalog(db: Session) -> ClinicSetting:
         db.add(setting)
         db.flush()
 
+    existing_service_codes = {s.code for s in db.query(Service).all()}
     for s_data in GENUINE_SERVICES:
-        existing = db.query(Service).filter(Service.code == s_data["code"]).first()
-        if not existing:
+        if s_data["code"] not in existing_service_codes:
             db.add(Service(**s_data, is_published=True, is_bookable=True))
     db.flush()
 
@@ -340,8 +342,9 @@ def provision_admin_account(
     password: str,
     phone: str = "+92 310 2468080",
     can_view_clinical_details: bool = True,
+    roles: Optional[dict[str, Role]] = None,
 ) -> User:
-    roles = ensure_roles_and_permissions(db)
+    roles = roles or ensure_roles_and_permissions(db)
     admin_role = roles[ROLE_ADMIN]
     email_norm = email.strip().lower()
     user = db.query(User).filter(User.email == email_norm).first()
@@ -389,6 +392,10 @@ def seed_initial_data(db: Session, include_demo_records: bool = True) -> None:
     the 12 dental services, genuine approved testimonials, and Dr. Aisha Salman's profile/schedule.
     When include_demo_records=True in development, also provisions synthetic test patients and clinical records.
     """
+    # Fast-path exit if database is already seeded
+    if db.query(ClinicSetting).first() and db.query(User).filter(User.email == "usman.ali@example.com").first():
+        return
+
     roles = ensure_roles_and_permissions(db)
     ensure_clinic_settings_and_catalog(db)
 
@@ -458,9 +465,11 @@ def seed_initial_data(db: Session, include_demo_records: bool = True) -> None:
             password=admin_pwd,
             phone="+92 310 2468080",
             can_view_clinical_details=True,
+            roles=roles,
         )
 
     if include_demo_records and settings.SEED_DEMO_DATA:
+        demo_patient_pwd_hash = hash_password("Patient@Rumi2026!")
         # Synthetic Patient A: Ayesha Tariq
         p1_email = "ayesha.patient@example.com"
         if not db.query(User).filter(User.email == p1_email).first():
@@ -468,7 +477,7 @@ def seed_initial_data(db: Session, include_demo_records: bool = True) -> None:
                 email=p1_email,
                 phone="+92 300 1112233",
                 full_name="Ayesha Tariq",
-                password_hash=hash_password("Patient@Rumi2026!"),
+                password_hash=demo_patient_pwd_hash,
                 role_id=roles[ROLE_PATIENT].id,
                 is_active=True,
                 is_email_verified=True,
@@ -815,7 +824,7 @@ def seed_initial_data(db: Session, include_demo_records: bool = True) -> None:
                 email=p2_email,
                 phone="+92 321 4445566",
                 full_name="Bilal Ahmed Khan",
-                password_hash=hash_password("Patient@Rumi2026!"),
+                password_hash=demo_patient_pwd_hash,
                 role_id=roles[ROLE_PATIENT].id,
                 is_active=True,
                 is_email_verified=True,
@@ -862,7 +871,7 @@ def seed_initial_data(db: Session, include_demo_records: bool = True) -> None:
                 email=p3_email,
                 phone="+92 302 5556677",
                 full_name="Amna Khan",
-                password_hash=hash_password("Patient@Rumi2026!"),
+                password_hash=demo_patient_pwd_hash,
                 role_id=roles[ROLE_PATIENT].id,
                 is_active=True,
                 is_email_verified=True,
@@ -953,7 +962,7 @@ def seed_initial_data(db: Session, include_demo_records: bool = True) -> None:
                 email=p4_email,
                 phone="+92 333 7778899",
                 full_name="Usman Ali",
-                password_hash=hash_password("Patient@Rumi2026!"),
+                password_hash=demo_patient_pwd_hash,
                 role_id=roles[ROLE_PATIENT].id,
                 is_active=True,
                 is_email_verified=True,

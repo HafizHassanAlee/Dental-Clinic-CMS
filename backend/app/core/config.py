@@ -61,14 +61,30 @@ class Settings(BaseSettings):
     @property
     def sqlalchemy_database_url(self) -> str:
         """
-        Normalizes Neon / Render PostgreSQL URLs (postgres:// or postgresql://)
+        Normalizes Neon / Render / Vercel PostgreSQL URLs (postgres://, postgresql://, or `psql '...'`)
         to use the SQLAlchemy 2.x psycopg v3 driver (postgresql+psycopg://).
         """
-        url = (self.DATABASE_URL or "").strip()
+        import re as _re
+
+        raw = (self.DATABASE_URL or "").strip()
+        # Handle if user pasted `DATABASE_URL=...` or `psql 'postgresql://...'` or quoted URL
+        match = _re.search(r"(postgres(?:ql(?:\+psycopg)?)?://[^\s'\"`]+)", raw)
+        url = match.group(1) if match else raw.strip("'\"` ")
+
         if url.startswith("postgres://"):
             url = "postgresql+psycopg://" + url[len("postgres://") :]
         elif url.startswith("postgresql://"):
             url = "postgresql+psycopg://" + url[len("postgresql://") :]
+
+        # Strip channel_binding=require which can cause handshake errors on serverless poolers
+        url = _re.sub(r"[?&]channel_binding=require", "", url)
+        if "?" not in url and "&" in url:
+            url = url.replace("&", "?", 1)
+
+        # If running on Vercel and DATABASE_URL was not set (still pointing to localhost), use /tmp SQLite fallback
+        if os.environ.get("VERCEL") and ("@localhost" in url or "@127.0.0.1" in url or not url):
+            return "sqlite:////tmp/rumi_dental.db"
+
         return url
 
     @property
