@@ -447,19 +447,20 @@ def seed_initial_data(db: Session, include_demo_records: bool = True) -> None:
             )
         db.flush()
 
-    if include_demo_records and settings.APP_ENV.lower() in {"development", "test", "local"}:
-        # Ensure development Administrator account (can also be provisioned/rotated via `python -m app.cli create-admin`)
-        admin_email = "admin@rumidentalcare.com"
-        if not db.query(User).filter(User.email == admin_email).first():
-            provision_admin_account(
-                db=db,
-                email=admin_email,
-                full_name="Rumi Clinic Administrator",
-                password="Admin@Rumi2026!",
-                phone="+92 310 2468080",
-                can_view_clinical_details=True,
-            )
+    # Ensure initial Administrator account (configurable via ADMIN_INITIAL_EMAIL / ADMIN_INITIAL_PASSWORD)
+    admin_email = (settings.ADMIN_INITIAL_EMAIL or "admin@rumidentalcare.com").strip().lower()
+    admin_pwd = settings.ADMIN_INITIAL_PASSWORD or "Admin@Rumi2026!"
+    if not db.query(User).filter(User.email == admin_email).first():
+        provision_admin_account(
+            db=db,
+            email=admin_email,
+            full_name="Rumi Clinic Administrator",
+            password=admin_pwd,
+            phone="+92 310 2468080",
+            can_view_clinical_details=True,
+        )
 
+    if include_demo_records and settings.SEED_DEMO_DATA:
         # Synthetic Patient A: Ayesha Tariq
         p1_email = "ayesha.patient@example.com"
         if not db.query(User).filter(User.email == p1_email).first():

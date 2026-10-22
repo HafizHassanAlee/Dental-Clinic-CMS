@@ -12,7 +12,9 @@ from fastapi.staticfiles import StaticFiles
 
 from app.api.v1.api import api_router
 from app.core.config import settings
-from app.db.session import SessionLocal
+from app.db.base import Base
+from app.db.session import SessionLocal, engine
+import app.models  # noqa: F401
 from app.middleware.security_headers import SecurityHeadersMiddleware
 from app.services.seed_service import seed_initial_data
 from app.web_routes import web_router
@@ -20,8 +22,12 @@ from app.web_routes import web_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Ensure upload directories exist and seed baseline clinic data if empty."""
+    """Ensure upload directories and database tables exist, and seed baseline clinic data if empty."""
     settings.private_upload_dir.mkdir(parents=True, exist_ok=True)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception:
+        pass
     db = SessionLocal()
     try:
         seed_initial_data(db)

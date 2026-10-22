@@ -28,6 +28,9 @@ class Settings(BaseSettings):
 
     DATABASE_URL: str = "postgresql+psycopg://postgres:postgres@localhost:5432/rumi_dental"
     TEST_DATABASE_URL: str = "postgresql+psycopg://postgres:postgres@localhost:5432/rumi_dental_test"
+    SEED_DEMO_DATA: bool = True
+    ADMIN_INITIAL_EMAIL: str = "admin@rumidentalcare.com"
+    ADMIN_INITIAL_PASSWORD: str = "Admin@Rumi2026!"
 
     FRONTEND_URL: str = "http://127.0.0.1:5173"
     BACKEND_URL: str = "http://127.0.0.1:8000"
@@ -54,6 +57,19 @@ class Settings(BaseSettings):
     CLINIC_WHATSAPP_NUMBER: str = "+923102468080"
     SMS_PROVIDER_URL: str = ""
     SMS_API_KEY: str = ""
+
+    @property
+    def sqlalchemy_database_url(self) -> str:
+        """
+        Normalizes Neon / Render PostgreSQL URLs (postgres:// or postgresql://)
+        to use the SQLAlchemy 2.x psycopg v3 driver (postgresql+psycopg://).
+        """
+        url = (self.DATABASE_URL or "").strip()
+        if url.startswith("postgres://"):
+            url = "postgresql+psycopg://" + url[len("postgres://") :]
+        elif url.startswith("postgresql://"):
+            url = "postgresql+psycopg://" + url[len("postgresql://") :]
+        return url
 
     @property
     def cors_origins(self) -> List[str]:
